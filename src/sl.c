@@ -203,7 +203,7 @@ sls slnew( sl_size_t size )
 sls sluse( void* ss, sl_size_t size )
 {
   sl s = ss;
-  s->res = size;
+  s->res = size - sizeof(sl_s);
   s->len = 0;
   s->str[0] = 0;
   return sl_str( s );
@@ -483,14 +483,26 @@ sls slins_c( slp s1, int pos, char* s2 ) { return slins_base( s1, pos, s2, sc_le
 
 sls slfmt( slp ss, char* fmt, ... )
 {
-  int size = 0;
-  char* p = NULL;
+  sls ret;
   va_list ap;
 
-  /* Determine required size. */
   va_start( ap, fmt );
-  size = vsnprintf( p, size, fmt, ap );
+  ret = slvpr( ss, fmt, ap );
   va_end( ap );
+
+  return ret;
+}
+
+
+sls slvpr( slp ss, char* fmt, va_list ap )
+{
+  va_list coap;
+
+  /* Copy ap to coap for second va-call. */
+  va_copy( coap, ap );
+
+  int size;
+  size = vsnprintf( NULL, 0, fmt, ap );
 
   if ( size < 0 )
     return NULL;
@@ -498,9 +510,8 @@ sls slfmt( slp ss, char* fmt, ... )
   size++;
   sl_ensure( ss, sl_len(*ss)+size );
 
-  va_start( ap, fmt );
-  size = vsnprintf( sl_end(*ss), size, fmt, ap );
-  va_end( ap );
+  size = vsnprintf( sl_end(*ss), size, fmt, coap );
+  va_end( coap );
 
   sl_len(*ss) += size;
 
@@ -521,7 +532,7 @@ int slfcr( sls ss, char c, sl_size_t pos )
 {
   while ( pos < sl_len(ss) && ss[pos] != c )
     pos++;
-      
+
   if ( pos == sl_len(ss) )
     return -1;
   else

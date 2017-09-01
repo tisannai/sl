@@ -289,9 +289,9 @@ sl slsl( sls ss );
 
 /**
  * Return last character in SL.
- * 
+ *
  * @param ss SL.
- * 
+ *
  * @return Last char.
  */
 char slend( sls ss );
@@ -299,10 +299,10 @@ char slend( sls ss );
 
 /**
  * Compare two SL.
- * 
+ *
  * @param s1 Reference SL.
  * @param s2 Compared SL.
- * 
+ *
  * @return -1,0,1 (see strcmp).
  */
 int slcmp( sls s1, sls s2 );
@@ -310,10 +310,10 @@ int slcmp( sls s1, sls s2 );
 
 /**
  * Are two SLs different.
- * 
+ *
  * @param s1 Reference SL.
  * @param s2 Compared SL.
- * 
+ *
  * @return 1 if different.
  */
 int sldff( sls s1, sls s2 );
@@ -321,7 +321,7 @@ int sldff( sls s1, sls s2 );
 
 /**
  * Sort SL array to alphabetical order.
- * 
+ *
  * @param sa   SL array.
  * @param len  SL array length.
  */
@@ -352,10 +352,10 @@ sls slcat_c( slp s1, char* s2 );
 
 /**
  * Cut to pos.
- * 
+ *
  * @param ss  SL.
  * @param pos Pos.
- * 
+ *
  * @return SL.
  */
 sls sllim( sls ss, int pos );
@@ -424,24 +424,36 @@ sls slfmt( slp ss, char* fmt, ... );
 
 
 /**
+ * Variable Arguments (VA) version of slfmt().
+ *
+ * @param ss  SLP.
+ * @param fmt Format.
+ * @param ap  VA list.
+ *
+ * @return SL.
+ */
+sls slvpr( slp ss, char* fmt, va_list ap );
+
+
+/**
  * Invert position, i.e. from positive index to negative and vice
  * versa.
- * 
+ *
  * @param ss  SLP.
  * @param pos Pos.
- * 
+ *
  * @return Inverted pos.
  */
 int slinv( sls ss, int pos );
-          
+
 
 /**
  * Find char towards right.
- * 
+ *
  * @param ss  SLP.
  * @param c   Char to find.
  * @param pos Search start pos.
- * 
+ *
  * @return Pos (or -1 if not found).
  */
 int slfcr( sls ss, char c, sl_size_t pos );
@@ -449,11 +461,11 @@ int slfcr( sls ss, char c, sl_size_t pos );
 
 /**
  * Find char towards left.
- * 
+ *
  * @param ss  SLP.
  * @param c   Char to find.
  * @param pos Search start pos.
- * 
+ *
  * @return Pos (or -1 if not found).
  */
 int slfcl( sls ss, char c, sl_size_t pos );
