@@ -421,3 +421,76 @@ line5\n\
   TEST_ASSERT( s == NULL );
   TEST_ASSERT( s2 == NULL );
 }
+
+
+void test_path( void )
+{
+  char* path1 = "/foo/bar/dii.txt";
+  char* path2 = "./foo/bar/dii.txt";
+  char* path3 = "/foo";
+  char* path4 = "./foo";
+  char* path5 = "dii.txt";
+
+  sls s;
+
+  s = slstr_c( path1 );
+  sldir( s );
+  TEST_ASSERT_TRUE( !strcmp( s, "/foo/bar" ) );
+  TEST_ASSERT( sllen(s) == 8 );
+  sldel( &s );
+
+  s = slstr_c( path2 );
+  sldir( s );
+  TEST_ASSERT_TRUE( !strcmp( s, "./foo/bar" ) );
+  TEST_ASSERT( sllen(s) == 9 );
+  sldel( &s );
+
+  s = slstr_c( path3 );
+  sldir( s );
+  TEST_ASSERT_TRUE( !strcmp( s, "/" ) );
+  TEST_ASSERT( sllen(s) == 1 );
+  sldel( &s );
+
+  s = slstr_c( path4 );
+  sldir( s );
+  TEST_ASSERT_TRUE( !strcmp( s, "." ) );
+  TEST_ASSERT( sllen(s) == 1 );
+  sldel( &s );
+
+  s = slstr_c( path5 );
+  sldir( s );
+  TEST_ASSERT_TRUE( !strcmp( s, "." ) );
+  TEST_ASSERT( sllen(s) == 1 );
+  sldel( &s );
+
+  s = slstr_c( path1 );
+  slbas( s );
+  TEST_ASSERT_TRUE( !strcmp( s, "dii.txt" ) );
+  TEST_ASSERT( sllen(s) == 7 );
+  sldel( &s );
+
+  s = slstr_c( path2 );
+  slbas( s );
+  TEST_ASSERT_TRUE( !strcmp( s, "dii.txt" ) );
+  TEST_ASSERT( sllen(s) == 7 );
+  sldel( &s );
+
+  s = slstr_c( path3 );
+  slbas( s );
+  TEST_ASSERT_TRUE( !strcmp( s, "foo" ) );
+  TEST_ASSERT( sllen(s) == 3 );
+  sldel( &s );
+
+  s = slstr_c( path4 );
+  slbas( s );
+  TEST_ASSERT_TRUE( !strcmp( s, "foo" ) );
+  TEST_ASSERT( sllen(s) == 3 );
+  sldel( &s );
+
+  s = slstr_c( path5 );
+  slbas( s );
+  TEST_ASSERT_TRUE( !strcmp( s, "dii.txt" ) );
+  TEST_ASSERT( sllen(s) == 7 );
+  sldel( &s );
+
+}

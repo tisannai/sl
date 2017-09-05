@@ -837,18 +837,59 @@ sls slext( sls ss, char* ext )
 
 sls sldir( sls ss )
 {
-  dirname( ss );
+  int i;
+
+  /* Find first "/" from end to beg. */
+  i = sl_len( ss );
+  while ( i > 0 && ss[i] != '/' )
+    i--;
+
+  if ( i == 0 )
+    {
+      if ( ss[i] == '/' )
+        {
+          ss[1] = 0;
+          sl_len(ss) = 1;
+        }
+      else
+        {
+          ss[0] = '.';
+          ss[1] = 0;
+          sl_len(ss) = 1;
+          return ss;
+        }
+    }
+  else
+    {
+      ss[i] = 0;
+      sl_len(ss) = i;
+    }
+
   return ss;
 }
 
 
 sls slbas( sls ss )
 {
-  char* base;
-  base = basename( ss );
-  int len = strlen( base );
-  slclr( ss );
-  strncpy( ss, base, len+1 );
+  int i;
+
+  /* Find first "/" from end to beg. */
+  i = sl_len( ss );
+  while ( i > 0 && ss[i] != '/' )
+    i--;
+
+  if ( i == 0 && ss[i] != '/' )
+    {
+      return ss;
+    }
+  else
+    {
+      i++;
+      sl_len(ss) = sl_len(ss)-i;
+      memmove( ss, &(ss[i]), sl_len(ss) );
+      ss[sl_len(ss)] = 0;
+    }
+
   return ss;
 }
 
