@@ -18,6 +18,8 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <ctype.h>
+#include <libgen.h>
 
 #include "sl.h"
 
@@ -474,6 +476,11 @@ static sls slins_base( slp s1, int pos, char* s2, sl_size_t len1 )
   strncpy( (*s1)+posn, s2, len1 );
   sl_len(*s1) += len1;
 
+  /* Terminate change SL. */
+  sl s = sl_base(*s1);
+  s->str[ s->len ] = 0;
+
+
   return *s1;
 }
 
@@ -811,6 +818,41 @@ char* sltok( sls ss, char* delim, char** pos )
 }
 
 
+sls slext( sls ss, char* ext )
+{
+  char* pos;
+  char* t;
+
+  pos = NULL;
+  t = sltok( ss, ext, &pos );
+  if ( t )
+    {
+      sl_len(ss) = pos-ss;
+      return ss;
+    }
+  else
+    return NULL;
+}
+
+
+sls sldir( sls ss )
+{
+  dirname( ss );
+  return ss;
+}
+
+
+sls slbas( sls ss )
+{
+  char* base;
+  base = basename( ss );
+  int len = strlen( base );
+  slclr( ss );
+  strncpy( ss, base, len+1 );
+  return ss;
+}
+
+
 sls slswp( sls ss, char f, char t )
 {
   sl_size_t i;
@@ -927,6 +969,26 @@ sls slmap( slp ss, char* f, char* t )
     *a = 0;
 
   return *ss;
+}
+
+
+sls sltou( sls ss )
+{
+  for ( sl_size_t i = 0; i < sl_len(ss); i++ )
+    {
+      sl_base(ss)->str[i] = toupper( sl_base(ss)->str[i] );
+    }
+  return ss;
+}
+
+
+sls sltol( sls ss )
+{
+  for ( sl_size_t i = 0; i < sl_len(ss); i++ )
+    {
+      sl_base(ss)->str[i] = tolower( sl_base(ss)->str[i] );
+    }
+  return ss;
 }
 
 

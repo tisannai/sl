@@ -567,6 +567,38 @@ char* sltok( sls ss, char* delim, char** pos );
 
 
 /**
+ * Drop the extension "ext" from "ss".
+ *
+ * @param ss  SL.
+ * @param ext Extension (i.e. file suffix).
+ *
+ * @return Updated SL (or NULL if no ext found).
+ */
+sls slext( sls ss, char* ext );
+
+
+/**
+ * Change to dirname, i.e. take out the basename.
+ *
+ * @param ss SL.
+ *
+ * @return SL.
+ */
+sls sldir( sls ss );
+
+
+/**
+ * Change to basename (file basename), i.e. take out the directory
+ * part.
+ *
+ * @param ss SL.
+ *
+ * @return SL.
+ */
+sls slbas( sls ss );
+
+
+/**
  * Swap (repair) SL by mapping "f" char to "t" char. Useful to cleanup
  * after sldiv() or slseg().
  *
@@ -590,6 +622,26 @@ sls slswp( sls ss, char f, char t );
  * @return SL
  */
 sls slmap( slp ss, char* f, char* t );
+
+
+/**
+ * Convert SL to upper case letters.
+ *
+ * @param ss SL.
+ *
+ * @return SL.
+ */
+sls sltou( sls ss );
+
+
+/**
+ * Convert SL to lower case letters.
+ *
+ * @param ss SL.
+ *
+ * @return SL.
+ */
+sls sltol( sls ss );
 
 
 /**
