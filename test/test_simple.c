@@ -30,8 +30,21 @@ void test_basics( void )
   TEST_ASSERT( sllen(s) == 10 );
 
   s2 = sldup( s );
-  sldel( &s );
+  TEST_ASSERT_TRUE( !slcmp( s, s2 ) );
   sldel( &s2 );
+
+  s2 = slrep( s );
+  TEST_ASSERT_TRUE( !sldff( s, s2 ) );
+  slfil( &s2, 'a', 1 );
+  TEST_ASSERT_TRUE( sldff( s, s2 ) );
+  slpop( s2, 0 );
+  TEST_ASSERT_TRUE( sldff( s, s2 ) );
+  sldel( &s2 );
+
+  TEST_ASSERT( slend( s ) ==  '1' );
+  slclr( s );
+  TEST_ASSERT( slend( s ) ==  0 );
+  sldel( &s );
 
   s2 = slsiz_c( t1, 2 );
   TEST_ASSERT_TRUE( !strcmp( s2, "text1" ) );
@@ -114,15 +127,29 @@ void test_content( void )
   TEST_ASSERT( sllen(s) == 11 );
 
   sls s2;
-  s2 = slsel( s, 1, -2 );
+  s2 = slsel( sldup(s), 1, -2 );
   TEST_ASSERT_TRUE( !strcmp( s2, "t1text1te" ) );
-  TEST_ASSERT( slall(s2) == 10 );
+  TEST_ASSERT( slall(s2) == 16 );
+  TEST_ASSERT( sllen(s2) == 9 );
+  sldel( &s2 );
+
+  s2 = slsel( slrep(s), -2, 1 );
+  TEST_ASSERT_TRUE( !strcmp( s2, "t1text1te" ) );
+  TEST_ASSERT( slall(s2) == 12 );
   TEST_ASSERT( sllen(s2) == 9 );
 
-  s2 = slsel( s, -2, 1 );
-  TEST_ASSERT_TRUE( !strcmp( s2, "t1text1te" ) );
-  TEST_ASSERT( slall(s2) == 10 );
-  TEST_ASSERT( sllen(s2) == 9 );
+  int pos;
+  pos = 2;
+  pos = slinv( s2, pos );
+  TEST_ASSERT( pos == -7 );
+  pos = slinv( s2, pos );
+  TEST_ASSERT( pos == 2 );
+
+  sllim( s2, 1 );
+  TEST_ASSERT_TRUE( !strcmp( s2, "t" ) );
+  TEST_ASSERT( slall(s2) == 12 );
+  TEST_ASSERT( sllen(s2) == 1 );
+  sldel( &s2 );
 
   slcpy_c( &s, t1 );
   slfmt( &s, "__%s_", t1 );
@@ -148,7 +175,6 @@ void test_content( void )
   TEST_ASSERT( sllen(s) == 10 );
 
   sldel( &s );
-  sldel( &s2 );
 }
 
 
@@ -181,6 +207,26 @@ void test_examine( void )
 
   s = slstr_c( t1 );
 
+  pos = slfcr( s, 'a', 0 );
+  TEST_ASSERT( pos == 0 );
+
+  pos = slfcr( s, 'e', 10 );
+  TEST_ASSERT( pos == -1 );
+
+  pos = slfcr( s, 'l', 10 );
+  TEST_ASSERT( pos == 11 );
+
+
+  pos = slfcl( s, 'a', 0 );
+  TEST_ASSERT( pos == 0 );
+
+  pos = slfcl( s, 'a', 5 );
+  TEST_ASSERT( pos == 0 );
+
+  pos = slfcl( s, 'l', 5 );
+  TEST_ASSERT( pos == -1 );
+
+
   pos = slidx( s, "a" );
   TEST_ASSERT( pos == 0 );
 
@@ -210,7 +256,6 @@ void test_pieces( void )
 {
   sls s, s2;
 
-  char** pcs;
   int cnt;
 
   s = slstr_c( "XYabcXYabcXY" );
@@ -225,6 +270,21 @@ void test_pieces( void )
 
   cnt = sldiv( s, 'a', -1, NULL );
   TEST_ASSERT( cnt == 3 );
+
+  char** pcs;
+
+  /* ------------------------------------------------------------
+   * slsrt
+   */
+  pcs = NULL;
+  cnt = sldiv( s, 'X', 0, &pcs );
+  slsrt( pcs, cnt );
+  TEST_ASSERT_TRUE( !strcmp( pcs[0], "" ) );
+  TEST_ASSERT_TRUE( !strcmp( pcs[1], "Y" ) );
+  TEST_ASSERT_TRUE( !strcmp( pcs[2], "Yabc" ) );
+  TEST_ASSERT_TRUE( !strcmp( pcs[3], "Yabc" ) );
+  slswp( s, 0, 'X' );
+  sl_free_f( pcs );
 
   /* ------------------------------------------------------------
    * sldiv
@@ -493,4 +553,18 @@ void test_path( void )
   TEST_ASSERT( sllen(s) == 7 );
   sldel( &s );
 
+  s = slstr_c( path5 );
+  slext( s, ".txt" );
+  TEST_ASSERT_TRUE( !strcmp( s, "dii" ) );
+
+  s = slstr_c( path5 );
+  TEST_ASSERT( slext( s, ".dii" ) == NULL );
+
+  sltou( s );
+  TEST_ASSERT_TRUE( !strcmp( s, "DII.TXT" ) );
+
+  sltol( s );
+  TEST_ASSERT_TRUE( !strcmp( s, "dii.txt" ) );
+
+  sldel( &s );
 }

@@ -351,6 +351,17 @@ sls slcat_c( slp s1, char* s2 );
 
 
 /**
+ * Pop (remove) character at pos. Pos can be positive or negative.
+ *
+ * @param ss  SL.
+ * @param pos Pos.
+ *
+ * @return SL.
+ */
+sls slpop( sls ss, int pos );
+
+
+/**
  * Cut to pos.
  *
  * @param ss  SL.
@@ -375,15 +386,15 @@ sls slcut( sls ss, int pos );
 
 
 /**
- * Select a slice from SL as new SL. Positive index is from start and
- * negative from end of string. slpop() is not sensitive to the order
- * of boundaries. Ending index is exclusive.
+ * Select a slice from SL and mutate SL. Positive index is from start
+ * and negative from end of string. slsel() is not sensitive to the
+ * order of boundaries. Ending index is exclusive.
  *
- * @param ss
- * @param a
- * @param b
+ * @param ss   SL.
+ * @param a    A boundary.
+ * @param b    B boundary.
  *
- * @return
+ * @return SL.
  */
 sls slsel( sls ss, int a, int b );
 
@@ -437,7 +448,7 @@ sls slvpr( slp ss, char* fmt, va_list ap );
 
 /**
  * Invert position, i.e. from positive index to negative and vice
- * versa.
+ * versa. Logical position is not changed.
  *
  * @param ss  SLP.
  * @param pos Pos.
@@ -686,7 +697,7 @@ void* sl_malloc_f( size_t size );
 /**
  * Standard free for SL library.
  *
- * @param ptr Allocation.
+ * @param ptr Allocation to free.
  */
 void sl_free_f( void* ptr );
 

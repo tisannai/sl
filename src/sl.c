@@ -124,9 +124,17 @@ static sl_size_t sl_norm_idx( sls ss, int idx )
   sl_size_t ret;
 
   if ( idx < 0 )
-    ret = sl_len(ss) + idx + 1;
+    {
+      ret = sl_len(ss) + idx + 1;
+    }
+  else if ( (sl_size_t)idx > sl_len(ss) )
+    {
+      ret = sl_len(ss);
+    }
   else
-    ret = idx;
+    {
+      ret = idx;
+    }
 
   return ret;
 }
@@ -393,6 +401,17 @@ sls slcat  ( slp s1, sls s2 ) { return slcat_base( s1, s2, sl_len1(s2) ); }
 sls slcat_c( slp s1, char* s2 ) { return slcat_base( s1, s2, sc_len1(s2) ); }
 
 
+sls slpop( sls ss, int pos )
+{
+  pos = sl_norm_idx( ss, pos );
+  sl s = sl_base(ss);
+  memmove( &s->str[pos], &s->str[pos+1], s->len-(pos+1) );
+  s->len--;
+  s->str[s->len] = 0;
+  return ss;
+}
+
+
 sls sllim( sls ss, int pos )
 {
   sl s = sl_base(ss);
@@ -443,12 +462,12 @@ sls slsel( sls ss, int a, int b )
       bn = t;
     }
 
-  sls r = slnew( bn-an+1 );
-  sl_len(r) = bn-an;
-  strncpy( r, &(ss[an]), bn-an );
-  r[ bn-an ] = 0;
+  sl s = sl_base(ss);
+  memmove( s->str, &s->str[an], bn-an );
+  s->str[ bn-an ] = 0;
+  s->len = bn-an;
 
-  return r;
+  return ss;
 }
 
 
@@ -460,9 +479,6 @@ static sls slins_base( slp s1, int pos, char* s2, sl_size_t len1 )
   len1--;
 
   sl_size_t posn = sl_norm_idx( *s1, pos );
-
-  if ( posn > sl_len(*s1) )
-    posn = sl_len(*s1);
 
   /*
    *          tail
@@ -531,7 +547,7 @@ int slinv( sls ss, int pos )
   if ( pos > 0 )
     return -1 * (sl_len(ss) - pos);
   else
-    return sl_len(ss) + pos + 1;
+    return sl_len(ss) + pos;
 }
 
 
