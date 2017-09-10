@@ -112,7 +112,16 @@ static off_t sl_fsize( const char *filename )
 
 
 /**
- * Normalize (possibly negative) SL index.
+ * Normalize (possibly negative) SL index. Positive index is saturated
+ * to SL length, and negative index is normalized.
+ *
+ * -1 means last char in SL, -2 second to last, etc. Index after last
+ * char can only be expressed by positive indeces. E.g. for SL with
+ * length of 4 the indeces are:
+ *
+ * Chars:     a  b  c  d  \0
+ * Positive:  0  1  2  3  4
+ * Negative: -4 -3 -2 -1
  *
  * @param ss  SL.
  * @param idx Index to SL.
@@ -125,7 +134,7 @@ static sl_size_t sl_norm_idx( sls ss, int idx )
 
   if ( idx < 0 )
     {
-      ret = sl_len(ss) + idx + 1;
+      ret = sl_len(ss) + idx;
     }
   else if ( (sl_size_t)idx > sl_len(ss) )
     {
@@ -138,7 +147,6 @@ static sl_size_t sl_norm_idx( sls ss, int idx )
 
   return ret;
 }
-
 
 
 /**
@@ -401,13 +409,28 @@ sls slcat  ( slp s1, sls s2 ) { return slcat_base( s1, s2, sl_len1(s2) ); }
 sls slcat_c( slp s1, char* s2 ) { return slcat_base( s1, s2, sc_len1(s2) ); }
 
 
+sls slpsh( slp ss, int pos, char c )
+{
+  pos = sl_norm_idx( *ss, pos );
+  sl s = sl_base(*ss);
+  sl_ensure( ss, sl_len(*ss)+1 );
+  if ( (sl_size_t)pos != s->len )
+    memmove( &s->str[pos+1], &s->str[pos], s->len-pos );
+  s->str[pos] = c;
+  s->len++;
+  return *ss;
+}
+
+
 sls slpop( sls ss, int pos )
 {
   pos = sl_norm_idx( ss, pos );
   sl s = sl_base(ss);
-  memmove( &s->str[pos], &s->str[pos+1], s->len-(pos+1) );
-  s->len--;
-  s->str[s->len] = 0;
+  if ( (sl_size_t)pos != s->len )
+    {
+      memmove( &s->str[pos], &s->str[pos+1], s->len-pos );
+      s->len--;
+    }
   return ss;
 }
 

@@ -39,6 +39,10 @@ void test_basics( void )
   TEST_ASSERT_TRUE( sldff( s, s2 ) );
   slpop( s2, 0 );
   TEST_ASSERT_TRUE( sldff( s, s2 ) );
+  /* "ext1text1a" */
+  /*      ^       */
+  slpsh( &s2, -6, 'K' );
+  TEST_ASSERT_TRUE( !slcmp( s2, "ext1Ktext1a" ) );
   sldel( &s2 );
 
   TEST_ASSERT( slend( s ) ==  '1' );
@@ -128,20 +132,20 @@ void test_content( void )
 
   sls s2;
   s2 = slsel( sldup(s), 1, -2 );
-  TEST_ASSERT_TRUE( !strcmp( s2, "t1text1te" ) );
+  TEST_ASSERT_TRUE( !strcmp( s2, "t1text1t" ) );
   TEST_ASSERT( slall(s2) == 16 );
-  TEST_ASSERT( sllen(s2) == 9 );
+  TEST_ASSERT( sllen(s2) == 8 );
   sldel( &s2 );
 
   s2 = slsel( slrep(s), -2, 1 );
-  TEST_ASSERT_TRUE( !strcmp( s2, "t1text1te" ) );
+  TEST_ASSERT_TRUE( !strcmp( s2, "t1text1t" ) );
   TEST_ASSERT( slall(s2) == 12 );
-  TEST_ASSERT( sllen(s2) == 9 );
+  TEST_ASSERT( sllen(s2) == 8 );
 
   int pos;
   pos = 2;
   pos = slinv( s2, pos );
-  TEST_ASSERT( pos == -7 );
+  TEST_ASSERT( pos == -6 );
   pos = slinv( s2, pos );
   TEST_ASSERT( pos == 2 );
 

@@ -172,7 +172,7 @@ sls slmin( slp ss );
 /**
  * Copy SL content from another SL.
  *
- * @param s1 SL.
+ * @param s1 SLP.
  * @param s2 SL.
  *
  * @return SL.
@@ -183,7 +183,7 @@ sls slcpy  ( slp s1, sls s2 );
 /**
  * Copy SL content from CSTR.
  *
- * @param s1 SL.
+ * @param s1 SLP.
  * @param s2 SL.
  *
  * @return SL.
@@ -331,7 +331,7 @@ void slsrt( sla sa, sl_size_t len );
 /**
  * Concatenate SL to SL.
  *
- * @param s1 SL.
+ * @param s1 SLP.
  * @param s2 SL to add.
  *
  * @return SL.
@@ -342,12 +342,23 @@ sls slcat  ( slp s1, sls s2 );
 /**
  * Concatenate CSTR to SL.
  *
- * @param s1 SL.
+ * @param s1 SLP.
  * @param s2 CSTR to add.
  *
  * @return SL.
  */
 sls slcat_c( slp s1, char* s2 );
+
+
+/**
+ * Push (insert) character to pos. Pos can be positive or negative.
+ *
+ * @param ss  SLP.
+ * @param pos Pos.
+ *
+ * @return SL.
+ */
+sls slpsh( slp ss, int pos, char c );
 
 
 /**
@@ -450,7 +461,7 @@ sls slvpr( slp ss, char* fmt, va_list ap );
  * Invert position, i.e. from positive index to negative and vice
  * versa. Logical position is not changed.
  *
- * @param ss  SLP.
+ * @param ss  SL.
  * @param pos Pos.
  *
  * @return Inverted pos.
@@ -461,7 +472,7 @@ int slinv( sls ss, int pos );
 /**
  * Find char towards right.
  *
- * @param ss  SLP.
+ * @param ss  SL.
  * @param c   Char to find.
  * @param pos Search start pos.
  *
@@ -473,7 +484,7 @@ int slfcr( sls ss, char c, sl_size_t pos );
 /**
  * Find char towards left.
  *
- * @param ss  SLP.
+ * @param ss  SL.
  * @param c   Char to find.
  * @param pos Search start pos.
  *
