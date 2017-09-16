@@ -246,6 +246,7 @@ sls slres( slp ss, sl_size_t size )
       s->res = size;
       *ss = sl_str(s);
     }
+
   return *ss;
 }
 
