@@ -570,5 +570,8 @@ void test_path( void )
   sltol( s );
   TEST_ASSERT_TRUE( !strcmp( s, "dii.txt" ) );
 
+  slcap( s );
+  TEST_ASSERT_TRUE( !strcmp( s, "Dii.txt" ) );
+
   sldel( &s );
 }

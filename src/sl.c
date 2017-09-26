@@ -1052,11 +1052,20 @@ sls slmap( slp ss, char* f, char* t )
 }
 
 
+sls slcap( sls ss )
+{
+  if ( sl_len(ss) > 0 )
+    ss[0] = toupper( ss[0] );
+
+  return ss;
+}
+
+
 sls sltou( sls ss )
 {
   for ( sl_size_t i = 0; i < sl_len(ss); i++ )
     {
-      sl_base(ss)->str[i] = toupper( sl_base(ss)->str[i] );
+      ss[i] = toupper( ss[i] );
     }
   return ss;
 }
@@ -1066,7 +1075,7 @@ sls sltol( sls ss )
 {
   for ( sl_size_t i = 0; i < sl_len(ss); i++ )
     {
-      sl_base(ss)->str[i] = tolower( sl_base(ss)->str[i] );
+      ss[i] = tolower( ss[i] );
     }
   return ss;
 }

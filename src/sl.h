@@ -647,6 +647,16 @@ sls slmap( slp ss, char* f, char* t );
 
 
 /**
+ * Capitalize SL, i.e. upper case first letter.
+ *
+ * @param ss SL.
+ *
+ * @return SL.
+ */
+sls slcap( sls ss );
+
+
+/**
  * Convert SL to upper case letters.
  *
  * @param ss SL.
