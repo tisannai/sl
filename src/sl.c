@@ -107,7 +107,7 @@ static off_t sl_fsize( const char *filename )
   if ( stat( filename, &st ) == 0 )
     return st.st_size;
 
-  return -1;
+  return -1;                               // GCOV_EXCL_LINE
 }
 
 
@@ -148,6 +148,8 @@ static sl_size_t sl_norm_idx( sls ss, int idx )
   return ret;
 }
 
+
+#ifdef SL_MEM_API
 
 /**
  * Default malloc for SL.
@@ -191,12 +193,14 @@ static sl_malloc_t  sl_malloc  = sl_malloc_f;
 static sl_free_t    sl_free    = sl_free_f;
 static sl_realloc_t sl_realloc = sl_realloc_f;
 
+#endif
 
 
 /* ------------------------------------------------------------
  * Library
  * ------------------------------------------------------------ */
 
+#ifdef SL_MEM_API
 void sl_cfg_alloc( sl_malloc_t  malloc,
                    sl_free_t    free,
                    sl_realloc_t realloc )
@@ -205,6 +209,7 @@ void sl_cfg_alloc( sl_malloc_t  malloc,
   sl_free    = free;
   sl_realloc = realloc;
 }
+#endif
 
 
 sls slnew( sl_size_t size )
@@ -551,8 +556,7 @@ sls slvpr( slp ss, char* fmt, va_list ap )
   int size;
   size = vsnprintf( NULL, 0, fmt, ap );
 
-  if ( size < 0 )
-    return NULL;
+  if ( size < 0 ) return NULL;
 
   size++;
   sl_ensure( ss, sl_len(*ss)+size );

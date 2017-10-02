@@ -8,7 +8,9 @@ void test_basics( void )
   sls s, s2;
   char* t1 = "text1";
 
+#ifdef SL_MEM_API
   sl_cfg_alloc( sl_malloc_f, sl_free_f, sl_realloc_f );
+#endif
 
   s = slnew( 128 );
 
@@ -61,7 +63,7 @@ void test_basics( void )
   TEST_ASSERT( s2sl->len == 5 );
   sldel( &s2 );
 
-  s = sluse( sl_malloc_f( 1024 ), 1024 );
+  s = sluse( malloc( 1024 ), 1024 );
   slcpy_c( &s, t1 );
   slcat( &s, s );
   slcat_c( &s, t1 );
@@ -288,7 +290,7 @@ void test_pieces( void )
   TEST_ASSERT_TRUE( !strcmp( pcs[2], "Yabc" ) );
   TEST_ASSERT_TRUE( !strcmp( pcs[3], "Yabc" ) );
   slswp( s, 0, 'X' );
-  sl_free_f( pcs );
+  sl_free( pcs );
 
   /* ------------------------------------------------------------
    * sldiv
@@ -304,7 +306,7 @@ void test_pieces( void )
   TEST_ASSERT( slall(s2) == 13 );
   TEST_ASSERT( sllen(s2) == 12 );
   slswp( s, 0, 'X' );
-  sl_free_f( pcs );
+  sl_free( pcs );
 
   pcs = NULL;
   cnt = sldiv( s, 'Y', 0, &pcs );
@@ -317,7 +319,7 @@ void test_pieces( void )
   TEST_ASSERT( slall(s2) == 13 );
   TEST_ASSERT( sllen(s2) == 12 );
   slswp( s, 0, 'Y' );
-  sl_free_f( pcs );
+  sl_free( pcs );
 
   pcs = NULL;
   cnt = sldiv( s, 'a', 0, &pcs );
@@ -325,7 +327,7 @@ void test_pieces( void )
   TEST_ASSERT_TRUE( !strcmp( pcs[1], "bcXY" ) );
   TEST_ASSERT_TRUE( !strcmp( pcs[2], "bcXY" ) );
   slswp( s, 0, 'a' );
-  sl_free_f( pcs );
+  sl_free( pcs );
 
   {
     char* spc[ cnt ];
@@ -357,7 +359,7 @@ void test_pieces( void )
   TEST_ASSERT( slall(s2) == 10 );
   TEST_ASSERT( sllen(s2) == 9 );
   slswp( s, 0, 'X' );
-  sl_free_f( pcs );
+  sl_free( pcs );
 
   pcs = NULL;
   cnt = slseg( s, "a", 0, &pcs );
@@ -365,7 +367,7 @@ void test_pieces( void )
   TEST_ASSERT_TRUE( !strcmp( pcs[1], "bcXY" ) );
   TEST_ASSERT_TRUE( !strcmp( pcs[2], "bcXY" ) );
   slswp( s, 0, 'a' );
-  sl_free_f( pcs );
+  sl_free( pcs );
 
   {
     char* spc[ cnt ];
@@ -382,7 +384,7 @@ void test_pieces( void )
     slswp( s, 0, 'a' );
   }
 
-  sl_free_f( pcs );
+  sl_free( pcs );
 
 }
 
