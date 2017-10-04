@@ -23,6 +23,7 @@ moves to SL structure beginning and updates the descriptor
 accordingly, and finally returns the string content.
 
 SL struct:
+
        reservation (uint32_t)
        length      (uint32_t)
     -> content     (char*)
