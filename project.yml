@@ -10,12 +10,12 @@
   :use_test_preprocessor: TRUE
   :use_auxiliary_dependencies: TRUE
   :build_root: build
-#  :release_build: TRUE
+  :release_build: TRUE
   :test_file_prefix: test_
 
-#:release_build:
-#  :output: MyApp.out
-#  :use_assembly: FALSE
+:release_build:
+  :output: libsl.so.0.0.1
+  :use_assembly: FALSE
 
 :environment:
 
@@ -117,6 +117,23 @@
       - -ftest-coverage
       - ${1}
       - -lm
+      - -o ${2}
+  :release_compiler:
+    :executable: gcc
+    :arguments:
+      - ${1}
+      - -Wall
+      - -std=c11
+      - -g
+      - -fPIC
+      - -c
+      - -o ${2}
+  :release_linker:
+    :executable: gcc
+    :arguments:
+      - -shared
+      - -Wl,-soname,libsl.so.0
+      - ${1}
       - -o ${2}
 
 :plugins:
