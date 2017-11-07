@@ -37,8 +37,8 @@
 #define sl_res(s)      (((sl)((s)-(sizeof(sl_s))))->res)
 #define sl_end(s)      ((char*)((s)+sl_len(s)))
 
-#define sc_len(s)    strlen(s)
-#define sc_len1(s)   (strlen(s)+1)
+#define sc_len(s)      strlen(s)
+#define sc_len1(s)     (strlen(s)+1)
 
 
 
