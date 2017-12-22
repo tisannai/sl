@@ -424,6 +424,7 @@ sls slpsh( slp ss, int pos, char c )
     memmove( &s->str[pos+1], &s->str[pos], s->len-pos );
   s->str[pos] = c;
   s->len++;
+  s->str[s->len] = 0;
   return *ss;
 }
 

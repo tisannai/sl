@@ -60,6 +60,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdarg.h>
 
 
 /** Size type. */
