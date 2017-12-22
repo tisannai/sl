@@ -149,68 +149,9 @@ static sl_size_t sl_norm_idx( sls ss, int idx )
 }
 
 
-#ifdef SL_MEM_API
-
-/**
- * Default malloc for SL.
- *
- * @param size Allocation size.
- *
- * @return Allocation.
- */
-void* sl_malloc_f( size_t size )
-{
-  return malloc( size );
-}
-
-
-/**
- * Default free for SL.
- *
- * @param ptr Allocation to free.
- */
-void sl_free_f( void* ptr )
-{
-  free( ptr );
-}
-
-
-/**
- * Default realloc for SL.
- *
- * @param ptr   Existing allocation.
- * @param size  Size for re-allocation.
- *
- * @return Re-allocation.
- */
-void* sl_realloc_f( void* ptr, size_t size )
-{
-  return realloc( ptr, size );
-}
-
-
-static sl_malloc_t  sl_malloc  = sl_malloc_f;
-static sl_free_t    sl_free    = sl_free_f;
-static sl_realloc_t sl_realloc = sl_realloc_f;
-
-#endif
-
-
 /* ------------------------------------------------------------
  * Library
  * ------------------------------------------------------------ */
-
-#ifdef SL_MEM_API
-void sl_cfg_alloc( sl_malloc_t  malloc,
-                   sl_free_t    free,
-                   sl_realloc_t realloc )
-{
-  sl_malloc  = malloc;
-  sl_free    = free;
-  sl_realloc = realloc;
-}
-#endif
-
 
 sls slnew( sl_size_t size )
 {
