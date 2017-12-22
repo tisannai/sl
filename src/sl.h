@@ -67,24 +67,25 @@
 typedef uint32_t sl_size_t;
 
 /** SL structure. */
-typedef struct {
-  sl_size_t res;                /**< Reservation. */
-  sl_size_t len;                /**< Length (used). */
-  char  str[0];                 /**< String content. */
+typedef struct
+{
+    sl_size_t res;      /**< Reservation. */
+    sl_size_t len;      /**< Length (used). */
+    char      str[ 0 ]; /**< String content. */
 } sl_s;
 
 
 /** Pointer to SL. */
-typedef sl_s*    sl;
+typedef sl_s* sl;
 
 /** Handle for mutable SL. */
-typedef char**   slp;
+typedef char** slp;
 
 /** SL array type. */
-typedef char**   sla;
+typedef char** sla;
 
 /** Type for SL String. */
-typedef char*   sls;
+typedef char* sls;
 
 
 #ifdef SL_MEM_API
@@ -92,18 +93,24 @@ typedef char*   sls;
 /*
  * SL_MEM_API allows to use custom memory allocation functions,
  * instead of the default: sl_malloc, sl_free, sl_realloc.
- * 
+ *
  * If SL_MEM_API is used, the user must provide implementation for the
  * above functions and they must be compatible with malloc etc.
+ *
+ * Additionally user should compile the library by own means.
  */
+
+extern void* sl_malloc( size_t size );
+extern void sl_free( void* ptr );
+extern void* sl_realloc( void* ptr, size_t size );
 
 #else
 
-/* Default to regular memmgmt functions. */
+/* Default to regular memory management functions. */
 
-# define sl_malloc   malloc
-# define sl_free     free
-# define sl_realloc  realloc
+#define sl_malloc malloc
+#define sl_free free
+#define sl_realloc realloc
 
 #endif
 
@@ -176,7 +183,7 @@ sls slmin( slp ss );
  *
  * @return SL.
  */
-sls slcpy  ( slp s1, sls s2 );
+sls slcpy( slp s1, sls s2 );
 
 
 /**
@@ -335,7 +342,7 @@ void slsrt( sla sa, sl_size_t len );
  *
  * @return SL.
  */
-sls slcat  ( slp s1, sls s2 );
+sls slcat( slp s1, sls s2 );
 
 
 /**
@@ -418,7 +425,7 @@ sls slsel( sls ss, int a, int b );
  *
  * @return Target.
  */
-sls slins  ( slp s1, int pos, sls s2 );
+sls slins( slp s1, int pos, sls s2 );
 
 
 /**
