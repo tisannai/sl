@@ -390,16 +390,17 @@ sls sllim( sls ss, int pos );
 
 
 /**
- * Cut either end or start of string. With positive "pos", cut from
- * end by pos. With negative "pos", cut from start upto "pos"
- * (exclusive).
+ * Cut off either end or start of string.
+ *
+ * With positive "cnt", cut off "cnt" characters from end.
+ * With negative "cnt", cut off "cnt" characters from start.
  *
  * @param ss   SL.
- * @param pos  Cut pos.
+ * @param cnt  Cut cnt.
  *
  * @return SL.
  */
-sls slcut( sls ss, int pos );
+sls slcut( sls ss, int cnt );
 
 
 /**

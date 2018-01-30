@@ -396,17 +396,18 @@ sls sllim( sls ss, int pos )
 }
 
 
-sls slcut( sls ss, int pos )
+sls slcut( sls ss, int cnt )
 {
+    int pos;
     sl s = sl_base( ss );
-    if ( pos >= 0 ) {
-        pos = s->len - pos;
+    if ( cnt >= 0 ) {
+        pos = s->len - cnt;
         s->str[ pos ] = 0;
         s->len = pos;
         return ss;
     } else {
-        sl_size_t len = s->len + pos;
-        pos = -pos;
+        sl_size_t len = s->len + cnt;
+        pos = -cnt;
         memmove( s->str, &s->str[ pos ], len );
         s->len = len;
         s->str[ len ] = 0;
