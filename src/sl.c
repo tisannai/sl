@@ -3,7 +3,7 @@
  * @author Tero Isannainen <tero.isannainen@gmail.com>
  * @date   Sat Jul  8 17:05:06 2017
  *
- * @brief  Simple to use string library.
+ * @brief  Simple String Library.
  *
  */
 
