@@ -67,51 +67,50 @@
 typedef uint32_t sl_size_t;
 
 /** SL structure. */
-typedef struct {
-  sl_size_t res;                /**< Reservation. */
-  sl_size_t len;                /**< Length (used). */
-  char  str[0];                 /**< String content. */
+typedef struct
+{
+    sl_size_t res;      /**< Reservation. */
+    sl_size_t len;      /**< Length (used). */
+    char      str[ 0 ]; /**< String content. */
 } sl_s;
 
 
 /** Pointer to SL. */
-typedef sl_s*    sl;
+typedef sl_s* sl;
 
 /** Handle for mutable SL. */
-typedef char**   slp;
+typedef char** slp;
 
 /** SL array type. */
-typedef char**   sla;
+typedef char** sla;
 
 /** Type for SL String. */
-typedef char*   sls;
-
-
-/** Select here or in compilation command. */
-/* #define SL_MEM_API 1 */
+typedef char* sls;
 
 
 #ifdef SL_MEM_API
 
-/* SL_MEM_API allows to use custom memory allocation functions,
-   instead of the default: malloc, free, realloc. */
+/*
+ * SL_MEM_API allows to use custom memory allocation functions,
+ * instead of the default: sl_malloc, sl_free, sl_realloc.
+ *
+ * If SL_MEM_API is used, the user must provide implementation for the
+ * above functions and they must be compatible with malloc etc.
+ *
+ * Additionally user should compile the library by own means.
+ */
 
-/** Allocation function ptr type: malloc, galloc. */
-typedef void* (*sl_malloc_t)(size_t);
-
-/** Allocation function ptr type: free. */
-typedef void (*sl_free_t)(void*);
-
-/** Allocation function ptr type: realloc. */
-typedef void* (*sl_realloc_t)(void*,size_t);
+extern void* sl_malloc( size_t size );
+extern void sl_free( void* ptr );
+extern void* sl_realloc( void* ptr, size_t size );
 
 #else
 
-/* Default to regular memmgmt functions. */
+/* Default to regular memory management functions. */
 
-# define sl_malloc   malloc
-# define sl_free     free
-# define sl_realloc  realloc
+#define sl_malloc malloc
+#define sl_free free
+#define sl_realloc realloc
 
 #endif
 
@@ -120,20 +119,6 @@ typedef void* (*sl_realloc_t)(void*,size_t);
 /* ------------------------------------------------------------
  * Library
  * ------------------------------------------------------------ */
-
-
-/**
- * Configure allocation functions.
- *
- * @param sl_malloc  Allocator.
- * @param sl_free    Free.
- * @param sl_realloc Realloc.
- */
-#ifdef SL_MEM_API
-void sl_cfg_alloc( sl_malloc_t  malloc,
-                   sl_free_t    free,
-                   sl_realloc_t realloc );
-#endif
 
 
 /**
@@ -198,7 +183,7 @@ sls slmin( slp ss );
  *
  * @return SL.
  */
-sls slcpy  ( slp s1, sls s2 );
+sls slcpy( slp s1, sls s2 );
 
 
 /**
@@ -357,7 +342,7 @@ void slsrt( sla sa, sl_size_t len );
  *
  * @return SL.
  */
-sls slcat  ( slp s1, sls s2 );
+sls slcat( slp s1, sls s2 );
 
 
 /**
@@ -405,16 +390,17 @@ sls sllim( sls ss, int pos );
 
 
 /**
- * Cut either end or start of string. With positive "pos", cut from
- * end by pos. With negative "pos", cut from start upto "pos"
- * (exclusive).
+ * Cut off either end or start of string.
+ *
+ * With positive "cnt", cut off "cnt" characters from end.
+ * With negative "cnt", cut off "cnt" characters from start.
  *
  * @param ss   SL.
- * @param pos  Cut pos.
+ * @param cnt  Cut cnt.
  *
  * @return SL.
  */
-sls slcut( sls ss, int pos );
+sls slcut( sls ss, int cnt );
 
 
 /**
@@ -440,7 +426,7 @@ sls slsel( sls ss, int a, int b );
  *
  * @return Target.
  */
-sls slins  ( slp s1, int pos, sls s2 );
+sls slins( slp s1, int pos, sls s2 );
 
 
 /**
@@ -724,39 +710,6 @@ sls slwrf( sls ss, char* filename );
  * @param ss SL.
  */
 void slprn( sls ss );
-
-
-#ifdef SL_MEM_API
-
-/**
- * Standard malloc for SL library.
- *
- * @param size Allocation size.
- *
- * @return Allocation.
- */
-void* sl_malloc_f( size_t size );
-
-
-/**
- * Standard free for SL library.
- *
- * @param ptr Allocation to free.
- */
-void sl_free_f( void* ptr );
-
-
-/**
- * Standard re-allocator for SL library.
- *
- * @param ptr   Existing allocation.
- * @param size  Size for new allocation.
- *
- * @return New allocation.
- */
-void* sl_realloc_f( void* ptr, size_t size );
-
-#endif // SL_MEM_API
 
 
 #endif
