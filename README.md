@@ -47,11 +47,11 @@ Length would be 5 and allocation size 128. If we want to concatenate "
 world!" to SL, we don't have to redo any allocations, since we have
 spare storage. Concatenation would be done as:
 
-   slcat_c( &sl, " world!" );
+    slcat_c( &sl, " world!" );
 
 We could also create SL with minimum size:
 
-   sl = slstr_c( "hello" );
+    sl = slstr_c( "hello" );
 
 Again the length would be 5, but storage would be only 6. If we now
 concatenate the rest to SL, there will be a reallocation. After
@@ -96,6 +96,9 @@ Simple usage example:
 
     /* Concatenate SL with 10 'a' letters. */
     slfil( &sl, 'a', 10 );
+
+    /* Cut off the 'a' letters. */
+    slcut( &sl, 12 );
 
     /* Get SL length. */
     length = sllen( sl );
