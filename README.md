@@ -13,6 +13,7 @@ terminated. The total SL Allocation is sum Descriptor allocation
 plus the string storage allocation.
 
 SL struct:
+
                       Field     Type          Addr
                       -----------------------------
      Descriptor ----- storage   (uint32_t)  | N + 0
