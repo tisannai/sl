@@ -61,6 +61,7 @@ static sl_size_t sl_i64_str_len( int64_t i64 );
 static void sl_i64_to_str( int64_t i64, char* str );
 
 
+
 /* ------------------------------------------------------------
  * Library
  * ------------------------------------------------------------ */
@@ -76,9 +77,9 @@ sls slnew( sl_size_t size )
 }
 
 
-sls sluse( void* ss, sl_size_t size )
+sls sluse( void* mem, sl_size_t size )
 {
-    slb s = ss;
+    slb s = mem;
     s->res = size - sizeof( sl_s );
     s->len = 0;
     s->str[ 0 ] = 0;
@@ -158,10 +159,10 @@ sls slmul( slp sp, char* cs, sl_size_t cnt )
     char* p = &( ( *sp )[ len ] );
     for ( sl_size_t i = 0; i < cnt; i++ ) {
         strncpy( p, cs, clen );
-        *p += clen;
+        p += clen;
     }
     *p = 0;
-    sl_len( *sp ) += cnt;
+    sl_len( *sp ) += cnt * clen;
     return *sp;
 }
 
@@ -395,9 +396,8 @@ sls slvpr( slp sp, char* fmt, va_list ap )
     size = vsnprintf( NULL, 0, fmt, ap );
 
     if ( size < 0 )
-        return NULL;
+        return NULL; // GCOV_EXCL_LINE
 
-    /* CHECK THIS. */
     size++;
     sl_ensure( sp, sl_len( *sp ) + size );
 
@@ -500,6 +500,7 @@ sls slvpq( slp sp, char* fmt, va_list ap )
                     }
 
                     default: {
+                        size++;
                         break;
                     }
                 }
@@ -985,7 +986,7 @@ sls slrdf( char* filename )
 
     off_t size = sl_fsize( filename );
     if ( size < 0 )
-        return NULL;
+        return NULL; // GCOV_EXCL_LINE
 
     ss = slnew( size + 1 );
 
@@ -993,7 +994,7 @@ sls slrdf( char* filename )
 
     fd = open( filename, O_RDONLY );
     if ( fd == -1 )
-        return NULL;
+        return NULL; // GCOV_EXCL_LINE
     read( fd, ss, size );
     ss[ size ] = 0;
     sl_len( ss ) = size;
@@ -1009,7 +1010,7 @@ sls slwrf( sls ss, char* filename )
 
     fd = creat( filename, S_IWUSR | S_IRUSR );
     if ( fd == -1 )
-        return NULL;
+        return NULL; // GCOV_EXCL_LINE
     write( fd, ss, sl_len( ss ) );
     close( fd );
 

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 
+
 void test_basics( void )
 {
     sls   s, s2;
@@ -45,6 +46,10 @@ void test_basics( void )
     /*      ^       */
     slpsh( &s2, -6, 'K' );
     TEST_ASSERT_TRUE( !slcmp( s2, "ext1Ktext1a" ) );
+
+    slclr( s2 );
+    slmul( &s2, t1, 3 );
+    TEST_ASSERT_TRUE( !slcmp( s2, "text1text1text1" ) );
     sldel( &s2 );
 
     TEST_ASSERT( slend( s ) == '1' );
@@ -181,14 +186,14 @@ void test_content( void )
     TEST_ASSERT( sllen( s ) == 10 );
 
     slclr( s );
-    slfmq( &s, "_%s_%i_%I_%u_%U_%c_%%_", t1, -123456, 654321, 123456789, 9876543210, 'X' );
-    TEST_ASSERT_TRUE( !strcmp( s, "_text1_-123456_654321_123456789_9876543210_X_%_" ) );
+    slfmq( &s, "_%s_%i_%I_%u_%U_%c_%%_%X", t1, -123456, 654321, 123456789, 9876543210, 'X' );
+    TEST_ASSERT_TRUE( !strcmp( s, "_text1_-123456_654321_123456789_9876543210_X_%_X" ) );
 
     s2 = slnew( 0 );
     slfmq( &s2, "%S%S", s, s );
     TEST_ASSERT_TRUE( !strcmp( s2,
-                               "_text1_-123456_654321_123456789_9876543210_X_%_"
-                               "_text1_-123456_654321_123456789_9876543210_X_%_" ) );
+                               "_text1_-123456_654321_123456789_9876543210_X_%_X"
+                               "_text1_-123456_654321_123456789_9876543210_X_%_X" ) );
     sldel( &s );
     sldel( &s2 );
 }
