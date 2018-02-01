@@ -28,10 +28,10 @@
 #define sl_malsize(s)  (sizeof(sl_s) + s)
 
 #define sl_str(s)      ((char*)&(s->str[0]))
-#define sl_base(s)     ((sl)((s)-(sizeof(sl_s))))
-#define sl_len(s)      (((sl)((s)-(sizeof(sl_s))))->len)
-#define sl_len1(s)     ((((sl)((s)-(sizeof(sl_s))))->len)+1)
-#define sl_res(s)      (((sl)((s)-(sizeof(sl_s))))->res)
+#define sl_base(s)     ((slb)((s)-(sizeof(sl_s))))
+#define sl_len(s)      (((slb)((s)-(sizeof(sl_s))))->len)
+#define sl_len1(s)     ((((slb)((s)-(sizeof(sl_s))))->len)+1)
+#define sl_res(s)      (((slb)((s)-(sizeof(sl_s))))->res)
 #define sl_end(s)      ((char*)((s)+sl_len(s)))
 
 #define sc_len(s)      strlen(s)
@@ -40,106 +40,25 @@
 
 
 
-
 /* ------------------------------------------------------------
  * Utility functions.
  * ------------------------------------------------------------ */
 
-
-/**
- * Ensure that SL has reservation of at least size.
- *
- * @param ss   SL.
- * @param size Reservation size requirement.
- */
-static void sl_ensure( slp ss, sl_size_t size )
-{
-    slres( ss, size );
-}
-
-
-/**
- * Display SL.
- *
- * @param ss SL.
- */
-static void sl_prn( sls ss )
-{
-    printf( "%s\n", ss );
-    printf( "  len: %d\n", sl_len( ss ) );
-    printf( "  res: %d\n", sl_res( ss ) );
-}
-
-
-/**
- * Copy "src" to "dst" and return pointer to end of "dst".
- *
- * @param dst Destination str.
- * @param src Source str.
- *
- * @return Pointer to dst end.
- */
-static char* sl_cpy( char* dst, char* src )
-{
-    int i = 0;
-    while ( src[ i ] ) {
-        dst[ i ] = src[ i ];
-        i++;
-    }
-    return &( dst[ i ] );
-}
-
-
-/**
- * Return file size or (-1 on error).
- *
- * @param filename Name of file.
- *
- * @return File size.
- */
-static off_t sl_fsize( const char* filename )
-{
-    struct stat st;
-
-    if ( stat( filename, &st ) == 0 )
-        return st.st_size;
-
-    return -1; // GCOV_EXCL_LINE
-}
-
-
-/**
- * Normalize (possibly negative) SL index. Positive index is saturated
- * to SL length, and negative index is normalized.
- *
- * -1 means last char in SL, -2 second to last, etc. Index after last
- * char can only be expressed by positive indeces. E.g. for SL with
- * length of 4 the indeces are:
- *
- * Chars:     a  b  c  d  \0
- * Positive:  0  1  2  3  4
- * Negative: -4 -3 -2 -1
- *
- * @param ss  SL.
- * @param idx Index to SL.
- *
- * @return Unsigned (positive) index to SL.
- */
-static sl_size_t sl_norm_idx( sls ss, int idx )
-{
-    sl_size_t ret;
-
-    if ( idx < 0 ) {
-        ret = sl_len( ss ) + idx;
-    } else if ( (sl_size_t)idx > sl_len( ss ) ) {
-        ret = sl_len( ss );
-    } else {
-        ret = idx;
-    }
-
-    return ret;
-}
-
+static void sl_ensure( slp sp, sl_size_t size );
+static void sl_prn( sls ss );
+static char* sl_cpy( char* dst, char* src );
+static off_t sl_fsize( const char* filename );
+static sl_size_t sl_norm_idx( sls ss, int idx );
+static sls slcpy_base( slp s1, char* s2, sl_size_t len1 );
+static int sl_cmp( const void* s1, const void* s2 );
+static sls slcat_base( slp s1, char* s2, sl_size_t len1 );
+static sls slins_base( slp s1, int pos, char* s2, sl_size_t len1 );
+static int sldiv_base( sls ss, char c, int size, char** div );
+static int slseg_base( sls ss, char* sc, int size, char** div );
+static sl_size_t sl_u64_str_len( uint64_t u64 );
+static void sl_u64_to_str( uint64_t u64, char* str );
+static sl_size_t sl_i64_str_len( int64_t i64 );
+static void sl_i64_to_str( int64_t i64, char* str );
 
 
 /* ------------------------------------------------------------
@@ -148,8 +67,8 @@ static sl_size_t sl_norm_idx( sls ss, int idx )
 
 sls slnew( sl_size_t size )
 {
-    sl s;
-    s = (sl)sl_malloc( sl_malsize( size ) );
+    slb s;
+    s = (slb)sl_malloc( sl_malsize( size ) );
     s->res = size;
     s->len = 0;
     s->str[ 0 ] = 0;
@@ -159,7 +78,7 @@ sls slnew( sl_size_t size )
 
 sls sluse( void* ss, sl_size_t size )
 {
-    sl s = ss;
+    slb s = ss;
     s->res = size - sizeof( sl_s );
     s->len = 0;
     s->str[ 0 ] = 0;
@@ -167,51 +86,43 @@ sls sluse( void* ss, sl_size_t size )
 }
 
 
-sls sldel( slp ss )
+sls sldel( slp sp )
 {
-    sl_free( sl_base( *ss ) );
-    *ss = 0;
+    sl_free( sl_base( *sp ) );
+    *sp = 0;
     return NULL;
 }
 
 
-sls slres( slp ss, sl_size_t size )
+sls slres( slp sp, sl_size_t size )
 {
-    if ( sl_res( *ss ) < size ) {
-        sl s;
-        s = sl_base( *ss );
-        s = (sl)sl_realloc( s, sl_malsize( size ) );
+    if ( sl_res( *sp ) < size ) {
+        slb s;
+        s = sl_base( *sp );
+        s = (slb)sl_realloc( s, sl_malsize( size ) );
         s->res = size;
-        *ss = sl_str( s );
+        *sp = sl_str( s );
     }
 
-    return *ss;
+    return *sp;
 }
 
 
-sls slmin( slp ss )
+sls slmin( slp sp )
 {
-    sl_size_t len = sl_len1( *ss );
+    sl_size_t len = sl_len1( *sp );
 
-    if ( sl_res( *ss ) > len ) {
-        sl s;
-        s = sl_base( *ss );
-        s = (sl)sl_realloc( s, sl_malsize( len ) );
+    if ( sl_res( *sp ) > len ) {
+        slb s;
+        s = sl_base( *sp );
+        s = (slb)sl_realloc( s, sl_malsize( len ) );
         s->res = len;
-        *ss = sl_str( s );
+        *sp = sl_str( s );
     }
 
-    return *ss;
+    return *sp;
 }
 
-
-static sls slcpy_base( slp s1, char* s2, sl_size_t len1 )
-{
-    sl_ensure( s1, len1 );
-    strncpy( *s1, s2, len1 );
-    sl_len( *s1 ) = len1 - 1;
-    return *s1;
-}
 
 sls slcpy( slp s1, sls s2 )
 {
@@ -225,16 +136,33 @@ sls slcpy_c( slp s1, char* s2 )
 }
 
 
-sls slfil( slp ss, char c, sl_size_t cnt )
+sls slfil( slp sp, char c, sl_size_t cnt )
 {
-    ssize_t len = sl_len( *ss );
-    sl_ensure( ss, len + cnt + 1 );
-    char* p = &( ( *ss )[ len ] );
+    ssize_t len = sl_len( *sp );
+    sl_ensure( sp, len + cnt + 1 );
+    char* p = &( ( *sp )[ len ] );
     for ( sl_size_t i = 0; i < cnt; i++, p++ )
         *p = c;
     *p = 0;
-    sl_len( *ss ) += cnt;
-    return *ss;
+    sl_len( *sp ) += cnt;
+    return *sp;
+}
+
+
+sls slmul( slp sp, char* cs, sl_size_t cnt )
+{
+    ssize_t len = sl_len( *sp );
+    ssize_t clen = sc_len( cs );
+
+    sl_ensure( sp, len + cnt * clen + 1 );
+    char* p = &( ( *sp )[ len ] );
+    for ( sl_size_t i = 0; i < cnt; i++ ) {
+        strncpy( p, cs, clen );
+        *p += clen;
+    }
+    *p = 0;
+    sl_len( *sp ) += cnt;
+    return *sp;
 }
 
 
@@ -299,7 +227,7 @@ sl_size_t slall( sls ss )
 }
 
 
-sl slsl( sls ss )
+slb slsl( sls ss )
 {
     return sl_base( ss );
 }
@@ -331,54 +259,42 @@ int sldff( sls s1, sls s2 )
 }
 
 
-static int sl_cmp( const void* s1, const void* s2 )
-{
-    return strcmp( *(char* const*)s1, *(char* const*)s2 );
-}
-
-
 void slsrt( sla sa, sl_size_t len )
 {
     qsort( sa, len, sizeof( char* ), sl_cmp );
 }
 
 
-static sls slcat_base( slp s1, char* s2, sl_size_t len1 )
-{
-    sl_ensure( s1, sl_len( *s1 ) + len1 );
-    strncpy( sl_end( *s1 ), s2, len1 );
-    sl_len( *s1 ) += len1 - 1;
-    return *s1;
-}
-
 sls slcat( slp s1, sls s2 )
 {
     return slcat_base( s1, s2, sl_len1( s2 ) );
 }
+
+
 sls slcat_c( slp s1, char* s2 )
 {
     return slcat_base( s1, s2, sc_len1( s2 ) );
 }
 
 
-sls slpsh( slp ss, int pos, char c )
+sls slpsh( slp sp, int pos, char c )
 {
-    pos = sl_norm_idx( *ss, pos );
-    sl s = sl_base( *ss );
-    sl_ensure( ss, sl_len( *ss ) + 1 );
+    pos = sl_norm_idx( *sp, pos );
+    slb s = sl_base( *sp );
+    sl_ensure( sp, sl_len( *sp ) + 1 );
     if ( (sl_size_t)pos != s->len )
         memmove( &s->str[ pos + 1 ], &s->str[ pos ], s->len - pos );
     s->str[ pos ] = c;
     s->len++;
     s->str[ s->len ] = 0;
-    return *ss;
+    return *sp;
 }
 
 
 sls slpop( sls ss, int pos )
 {
     pos = sl_norm_idx( ss, pos );
-    sl s = sl_base( ss );
+    slb s = sl_base( ss );
     if ( (sl_size_t)pos != s->len ) {
         memmove( &s->str[ pos ], &s->str[ pos + 1 ], s->len - pos );
         s->len--;
@@ -389,7 +305,7 @@ sls slpop( sls ss, int pos )
 
 sls sllim( sls ss, int pos )
 {
-    sl s = sl_base( ss );
+    slb s = sl_base( ss );
     s->str[ pos ] = 0;
     s->len = pos;
     return ss;
@@ -399,7 +315,7 @@ sls sllim( sls ss, int pos )
 sls slcut( sls ss, int cnt )
 {
     int pos;
-    sl s = sl_base( ss );
+    slb s = sl_base( ss );
     if ( cnt >= 0 ) {
         pos = s->len - cnt;
         s->str[ pos ] = 0;
@@ -434,7 +350,7 @@ sls slsel( sls ss, int a, int b )
         bn = t;
     }
 
-    sl s = sl_base( ss );
+    slb s = sl_base( ss );
     memmove( s->str, &s->str[ an ], bn - an );
     s->str[ bn - an ] = 0;
     s->len = bn - an;
@@ -443,59 +359,32 @@ sls slsel( sls ss, int a, int b )
 }
 
 
-static sls slins_base( slp s1, int pos, char* s2, sl_size_t len1 )
-{
-    sl_size_t len = sl_len( *s1 ) + len1;
-    sl_ensure( s1, len );
-
-    len1--;
-
-    sl_size_t posn = sl_norm_idx( *s1, pos );
-
-    /*
-     *          tail
-     *         /
-     * abcd....efghi
-     */
-
-    sl_size_t tail = posn + len1;
-
-    memmove( ( *s1 ) + tail, ( *s1 ) + posn, ( sl_len( *s1 ) - posn ) );
-    strncpy( ( *s1 ) + posn, s2, len1 );
-    sl_len( *s1 ) += len1;
-
-    /* Terminate change SL. */
-    sl s = sl_base( *s1 );
-    s->str[ s->len ] = 0;
-
-
-    return *s1;
-}
-
 sls slins( slp s1, int pos, sls s2 )
 {
     return slins_base( s1, pos, s2, sl_len1( s2 ) );
 }
+
+
 sls slins_c( slp s1, int pos, char* s2 )
 {
     return slins_base( s1, pos, s2, sc_len1( s2 ) );
 }
 
 
-sls slfmt( slp ss, char* fmt, ... )
+sls slfmt( slp sp, char* fmt, ... )
 {
     sls     ret;
     va_list ap;
 
     va_start( ap, fmt );
-    ret = slvpr( ss, fmt, ap );
+    ret = slvpr( sp, fmt, ap );
     va_end( ap );
 
     return ret;
 }
 
 
-sls slvpr( slp ss, char* fmt, va_list ap )
+sls slvpr( slp sp, char* fmt, va_list ap )
 {
     va_list coap;
 
@@ -508,15 +397,217 @@ sls slvpr( slp ss, char* fmt, va_list ap )
     if ( size < 0 )
         return NULL;
 
+    /* CHECK THIS. */
     size++;
-    sl_ensure( ss, sl_len( *ss ) + size );
+    sl_ensure( sp, sl_len( *sp ) + size );
 
-    size = vsnprintf( sl_end( *ss ), size, fmt, coap );
+    size = vsnprintf( sl_end( *sp ), size, fmt, coap );
     va_end( coap );
 
-    sl_len( *ss ) += size;
+    sl_len( *sp ) += size;
 
-    return *ss;
+    return *sp;
+}
+
+
+sls slfmq( slp sp, char* fmt, ... )
+{
+    sls     ret;
+    va_list ap;
+
+    va_start( ap, fmt );
+    ret = slvpq( sp, fmt, ap );
+    va_end( ap );
+
+    return ret;
+}
+
+
+sls slvpq( slp sp, char* fmt, va_list ap )
+{
+    va_list coap;
+
+    /* Copy ap to coap for second va-call. */
+    va_copy( coap, ap );
+
+    int size = 0;
+
+
+    /* ------------------------------------------------------------
+     * Calculate string size.
+     */
+
+    char*    c;
+    char*    ts;
+    int64_t  i64;
+    uint64_t u64;
+
+    c = fmt;
+
+    while ( *c ) {
+
+        switch ( *c ) {
+
+            case '%': {
+                c++;
+
+                switch ( *c ) {
+
+                    case 's': {
+                        ts = va_arg( ap, char* );
+                        size += strlen( ts );
+                        break;
+                    }
+
+                    case 'S': {
+                        ts = va_arg( ap, char* );
+                        size += sl_len( ts );
+                        break;
+                    }
+
+                    case 'i': {
+                        i64 = va_arg( ap, int );
+                        size += sl_i64_str_len( i64 );
+                        break;
+                    }
+
+                    case 'I': {
+                        i64 = va_arg( ap, int64_t );
+                        size += sl_i64_str_len( i64 );
+                        break;
+                    }
+
+                    case 'u': {
+                        u64 = va_arg( ap, unsigned int );
+                        size += sl_u64_str_len( u64 );
+                        break;
+                    }
+
+                    case 'U': {
+                        u64 = va_arg( ap, uint64_t );
+                        size += sl_u64_str_len( u64 );
+                        break;
+                    }
+
+                    case 'c': {
+                        size++;
+                        break;
+                    }
+
+                    case '%': {
+                        size++;
+                        break;
+                    }
+
+                    default: {
+                        break;
+                    }
+                }
+
+                c++;
+                break;
+            }
+
+            default: {
+                size++;
+                c++;
+                break;
+            }
+        }
+    }
+
+    va_end( ap );
+
+    sl_ensure( sp, sl_len1( *sp ) + size );
+
+
+    /* ------------------------------------------------------------
+     * Expand format string.
+     */
+
+    char* wp = sl_end( *sp );
+
+    sl_len( *sp ) += size;
+    c = fmt;
+
+    while ( *c ) {
+
+        switch ( *c ) {
+
+            case '%': {
+                c++;
+
+                switch ( *c ) {
+
+                    case 's':
+                    case 'S': {
+                        ts = va_arg( coap, char* );
+                        if ( *c == 's' )
+                            size = strlen( ts );
+                        else
+                            size = sl_len( ts );
+                        strncpy( wp, ts, size );
+                        wp += size;
+                        break;
+                    }
+
+                    case 'i':
+                    case 'I': {
+                        if ( *c == 'i' )
+                            i64 = va_arg( coap, int );
+                        else
+                            i64 = va_arg( coap, int64_t );
+                        size = sl_i64_str_len( i64 );
+                        sl_i64_to_str( i64, wp );
+                        wp += size;
+                        break;
+                    }
+
+                    case 'u':
+                    case 'U': {
+                        if ( *c == 'u' )
+                            u64 = va_arg( coap, unsigned int );
+                        else
+                            u64 = va_arg( coap, uint64_t );
+                        size = sl_u64_str_len( u64 );
+                        sl_u64_to_str( u64, wp );
+                        wp += size;
+                        break;
+                    }
+
+                    case 'c': {
+                        char ch;
+                        ch = (char)va_arg( coap, int );
+                        *wp++ = ch;
+                        break;
+                    }
+
+                    case '%': {
+                        *wp++ = '%';
+                        break;
+                    }
+
+                    default: {
+                        *wp++ = *c;
+                        break;
+                    }
+                }
+
+                c++;
+                break;
+            }
+
+            default: {
+                *wp++ = *c++;
+                break;
+            }
+        }
+    }
+    va_end( coap );
+
+    *wp = 0;
+
+    return *sp;
 }
 
 
@@ -579,48 +670,6 @@ int slidx( sls s1, char* s2 )
 }
 
 
-/**
- * Divide SL by replacing "c" with 0. Count the number of segments and
- * assign "div" to point to start of each segment.
- *
- * If size is less than 0, count only the number of segments.
- *
- * @param ss   SL.
- * @param c    Division char.
- * @param size Segment limit (size of div).
- * @param div  Storage for segments.
- *
- * @return Number of segments.
- */
-static int sldiv_base( sls ss, char c, int size, char** div )
-{
-    int   divcnt = 0;
-    char *a, *b;
-
-    a = ss;
-    b = ss;
-
-    while ( *b ) {
-        if ( *b == c ) {
-            if ( size >= 0 )
-                *b = 0;
-            if ( divcnt < size ) {
-                div[ divcnt ] = a;
-                b += 1;
-                a = b;
-            }
-            divcnt++;
-        }
-        b++;
-    }
-
-    if ( divcnt < size && size >= 0 )
-        div[ divcnt ] = a;
-
-    return divcnt + 1;
-}
-
-
 int sldiv( sls ss, char c, int size, char*** div )
 {
     if ( size < 0 ) {
@@ -635,53 +684,6 @@ int sldiv( sls ss, char c, int size, char*** div )
         *div = (char**)sl_malloc( size * sizeof( char* ) );
         return sldiv_base( ss, c, size, *div );
     }
-}
-
-
-/**
- * Segment SL by replacing "sc" with 0. Count the number of segments
- * and assign "div" to point to start of each segment.
- *
- * If size is less than 0, count only the number of segments.
- *
- * @param ss   SL.
- * @param c    Division char.
- * @param size Segment limit (size of div).
- * @param div  Storage for segments.
- *
- * @return Number of segments.
- */
-static int slseg_base( sls ss, char* sc, int size, char** div )
-{
-    int   divcnt = 0;
-    int   idx;
-    int   len = strlen( sc );
-    char *a, *b;
-
-    a = ss;
-    b = ss;
-
-    while ( *a ) {
-        idx = slidx( a, sc );
-        if ( idx >= 0 ) {
-            b = a + idx;
-            if ( size >= 0 )
-                *b = 0;
-            if ( divcnt < size ) {
-                div[ divcnt ] = a;
-            }
-            b += len;
-            a = b;
-            divcnt++;
-        } else {
-            break;
-        }
-    }
-
-    if ( divcnt < size && size >= 0 )
-        div[ divcnt ] = a;
-
-    return divcnt + 1;
 }
 
 
@@ -797,7 +799,7 @@ sls sldir( sls ss )
 {
     int i;
 
-    /* Find first "/" from end to beg. */
+    /* Find first "/" from end. */
     i = sl_len( ss );
     while ( i > 0 && ss[ i ] != '/' )
         i--;
@@ -825,7 +827,7 @@ sls slbas( sls ss )
 {
     int i;
 
-    /* Find first "/" from end to beg. */
+    /* Find first "/" from end. */
     i = sl_len( ss );
     while ( i > 0 && ss[ i ] != '/' )
         i--;
@@ -858,15 +860,15 @@ sls slswp( sls ss, char f, char t )
 }
 
 
-sls slmap( slp ss, char* f, char* t )
+sls slmap( slp sp, char* f, char* t )
 {
     /*
      * If "t" is longer than "f", loop and count how many instances of
-     * "f" is found. Increase size of ss by N*t.len - N*f.len.
+     * "f" is found. Increase size of sp by N*t.len - N*f.len.
      *
      * Loop and find the next "f" index. Skip upto index and insert "t"
      * inplace. Continue until "f" is no more found and insert tail of
-     * "ss".
+     * "sp".
      */
 
     sl_size_t f_len = sc_len( f );
@@ -893,7 +895,7 @@ sls slmap( slp ss, char* f, char* t )
          * foooXXXfiiiXXXdiiiXXX
          * foooYYYYfiiiYYYYdiiiYYYY
          */
-        a = *ss;
+        a = *sp;
 
         while ( 1 ) {
             idx = slidx( a, f );
@@ -906,18 +908,18 @@ sls slmap( slp ss, char* f, char* t )
         }
 
         sl_size_t nlen;
-        sl_size_t olen = sl_len( *ss );
-        nlen = sl_len( *ss ) - ( cnt * f_len ) + ( cnt * t_len );
-        sl_ensure( ss, nlen + 1 );
-        sl_len( *ss ) = nlen;
+        sl_size_t olen = sl_len( *sp );
+        nlen = sl_len( *sp ) - ( cnt * f_len ) + ( cnt * t_len );
+        sl_ensure( sp, nlen + 1 );
+        sl_len( *sp ) = nlen;
 
         /*
-         * Shift original ss content to right in order to enable copying
+         * Shift original sp content to right in order to enable copying
          * chars safely from right to left.
          */
-        b = &( ( *ss )[ nlen - olen ] );
-        memmove( b, *ss, olen + 1 );
-        a = *ss;
+        b = &( ( *sp )[ nlen - olen ] );
+        memmove( b, *sp, olen + 1 );
+        a = *sp;
     } else {
         /*
          * Replace XXX with YY.
@@ -925,8 +927,8 @@ sls slmap( slp ss, char* f, char* t )
          * foooXXXfiiiXXXdiii
          * foooYYfiiiYYdiii
          */
-        a = *ss;
-        b = *ss;
+        a = *sp;
+        b = *sp;
     }
 
     while ( *b ) {
@@ -946,7 +948,7 @@ sls slmap( slp ss, char* f, char* t )
     if ( *b == 0 )
         *a = 0;
 
-    return *ss;
+    return *sp;
 }
 
 
@@ -1018,4 +1020,371 @@ sls slwrf( sls ss, char* filename )
 void slprn( sls ss )
 {
     sl_prn( ss );
+}
+
+
+
+
+/* ------------------------------------------------------------
+ * Utility functions.
+ * ------------------------------------------------------------ */
+
+
+/**
+ * Ensure that SL has reservation of at least size.
+ *
+ * @param ss   SL.
+ * @param size Reservation size requirement.
+ */
+static void sl_ensure( slp sp, sl_size_t size )
+{
+    slres( sp, size );
+}
+
+
+/**
+ * Display SL.
+ *
+ * @param ss SL.
+ */
+static void sl_prn( sls ss )
+{
+    printf( "%s\n", ss );
+    printf( "  len: %d\n", sl_len( ss ) );
+    printf( "  res: %d\n", sl_res( ss ) );
+}
+
+
+/**
+ * Copy "src" to "dst" and return pointer to end of "dst".
+ *
+ * @param dst Destination str.
+ * @param src Source str.
+ *
+ * @return Pointer to dst end.
+ */
+static char* sl_cpy( char* dst, char* src )
+{
+    int i = 0;
+    while ( src[ i ] ) {
+        dst[ i ] = src[ i ];
+        i++;
+    }
+    return &( dst[ i ] );
+}
+
+
+/**
+ * Return file size or (-1 on error).
+ *
+ * @param filename Name of file.
+ *
+ * @return File size.
+ */
+static off_t sl_fsize( const char* filename )
+{
+    struct stat st;
+
+    if ( stat( filename, &st ) == 0 )
+        return st.st_size;
+
+    return -1; // GCOV_EXCL_LINE
+}
+
+
+/**
+ * Normalize (possibly negative) SL index. Positive index is saturated
+ * to SL length, and negative index is normalized.
+ *
+ * -1 means last char in SL, -2 second to last, etc. Index after last
+ * char can only be expressed by positive indeces. E.g. for SL with
+ * length of 4 the indeces are:
+ *
+ * Chars:     a  b  c  d  \0
+ * Positive:  0  1  2  3  4
+ * Negative: -4 -3 -2 -1
+ *
+ * @param ss  SL.
+ * @param idx Index to SL.
+ *
+ * @return Unsigned (positive) index to SL.
+ */
+static sl_size_t sl_norm_idx( sls ss, int idx )
+{
+    sl_size_t ret;
+
+    if ( idx < 0 ) {
+        ret = sl_len( ss ) + idx;
+    } else if ( (sl_size_t)idx > sl_len( ss ) ) {
+        ret = sl_len( ss );
+    } else {
+        ret = idx;
+    }
+
+    return ret;
+}
+
+
+/**
+ * Copy s2 to s1.
+ *
+ * @param s1   SL target.
+ * @param s2   Source string.
+ * @param len1 s2 length + 1
+ *
+ * @return SL.
+ */
+static sls slcpy_base( slp s1, char* s2, sl_size_t len1 )
+{
+    sl_ensure( s1, len1 );
+    strncpy( *s1, s2, len1 );
+    sl_len( *s1 ) = len1 - 1;
+    return *s1;
+}
+
+
+/**
+ * Compare two strings.
+ *
+ * @param s1 String 1.
+ * @param s2 String 2.
+ *
+ * @return Return "strcmp" result.
+ */
+static int sl_cmp( const void* s1, const void* s2 )
+{
+    return strcmp( *(char* const*)s1, *(char* const*)s2 );
+}
+
+
+/**
+ * Concatenate s2 to s1.
+ *
+ * @param s1   SL target.
+ * @param s2   Source string.
+ * @param len1 s2 length + 1.
+ *
+ * @return SL.
+ */
+static sls slcat_base( slp s1, char* s2, sl_size_t len1 )
+{
+    sl_ensure( s1, sl_len( *s1 ) + len1 );
+    strncpy( sl_end( *s1 ), s2, len1 );
+    sl_len( *s1 ) += len1 - 1;
+    return *s1;
+}
+
+
+/**
+ * Insert s2 of with length+1 to s1 into position pos.
+ *
+ * @param s1    String 1.
+ * @param pos   Insert position.
+ * @param s2    String 2.
+ * @param len1  s2 length + 1.
+ *
+ * @return SL.
+ */
+static sls slins_base( slp s1, int pos, char* s2, sl_size_t len1 )
+{
+    sl_size_t len = sl_len( *s1 ) + len1;
+    sl_ensure( s1, len );
+
+    len1--;
+
+    sl_size_t posn = sl_norm_idx( *s1, pos );
+
+    /*
+     *          tail
+     *         /
+     * abcd....efghi
+     */
+
+    sl_size_t tail = posn + len1;
+
+    memmove( ( *s1 ) + tail, ( *s1 ) + posn, ( sl_len( *s1 ) - posn ) );
+    strncpy( ( *s1 ) + posn, s2, len1 );
+    sl_len( *s1 ) += len1;
+
+    /* Terminate change SL. */
+    slb s = sl_base( *s1 );
+    s->str[ s->len ] = 0;
+
+
+    return *s1;
+}
+
+
+/**
+ * Divide SL by replacing "c" with 0. Count the number of segments and
+ * assign "div" to point to start of each segment.
+ *
+ * If size is less than 0, count only the number of segments.
+ *
+ * @param ss   SL.
+ * @param c    Division char.
+ * @param size Segment limit (size of div).
+ * @param div  Storage for segments.
+ *
+ * @return Number of segments.
+ */
+static int sldiv_base( sls ss, char c, int size, char** div )
+{
+    int   divcnt = 0;
+    char *a, *b;
+
+    a = ss;
+    b = ss;
+
+    while ( *b ) {
+        if ( *b == c ) {
+            if ( size >= 0 )
+                *b = 0;
+            if ( divcnt < size ) {
+                div[ divcnt ] = a;
+                b += 1;
+                a = b;
+            }
+            divcnt++;
+        }
+        b++;
+    }
+
+    if ( divcnt < size && size >= 0 )
+        div[ divcnt ] = a;
+
+    return divcnt + 1;
+}
+
+
+/**
+ * Segment SL by replacing "sc" with 0. Count the number of segments
+ * and assign "div" to point to start of each segment.
+ *
+ * If size is less than 0, count only the number of segments.
+ *
+ * @param ss   SL.
+ * @param c    Division char.
+ * @param size Segment limit (size of div).
+ * @param div  Storage for segments.
+ *
+ * @return Number of segments.
+ */
+static int slseg_base( sls ss, char* sc, int size, char** div )
+{
+    int   divcnt = 0;
+    int   idx;
+    int   len = strlen( sc );
+    char *a, *b;
+
+    a = ss;
+    b = ss;
+
+    while ( *a ) {
+        idx = slidx( a, sc );
+        if ( idx >= 0 ) {
+            b = a + idx;
+            if ( size >= 0 )
+                *b = 0;
+            if ( divcnt < size ) {
+                div[ divcnt ] = a;
+            }
+            b += len;
+            a = b;
+            divcnt++;
+        } else {
+            break;
+        }
+    }
+
+    if ( divcnt < size && size >= 0 )
+        div[ divcnt ] = a;
+
+    return divcnt + 1;
+}
+
+
+/**
+ * Calculate string length of u64 string conversion.
+ *
+ * @param u64 Integer to convert.
+ *
+ * @return Length.
+ */
+static sl_size_t sl_u64_str_len( uint64_t u64 )
+{
+    sl_size_t len = 0;
+
+    do {
+        u64 /= 10;
+        len++;
+    } while ( u64 != 0 );
+
+    return len;
+}
+
+
+
+/**
+ * Convert u64 to string.
+ *
+ * @param u64 Integer to convert.
+ * @param str Storage for conversion.
+ */
+static void sl_u64_to_str( uint64_t u64, char* str )
+{
+    char* c;
+
+    c = str;
+    do {
+        *c++ = ( u64 % 10 ) + '0';
+        u64 /= 10;
+    } while ( u64 != 0 );
+
+    *c = 0;
+    c--;
+
+    /* Reverse the string. */
+    char ch;
+    while ( str < c ) {
+        ch = *str;
+        *str = *c;
+        *c = ch;
+        str++;
+        c--;
+    }
+}
+
+
+/**
+ * Calculate string length of i64 string conversion.
+ *
+ * @param i64 Integer to convert.
+ *
+ * @return Length.
+ */
+static sl_size_t sl_i64_str_len( int64_t i64 )
+{
+    if ( i64 < 0 ) {
+        return sl_u64_str_len( -i64 ) + 1;
+    } else {
+        return sl_u64_str_len( i64 );
+    }
+}
+
+
+/**
+ * Convert i64 to string.
+ *
+ * @param i64 Integer to convert.
+ * @param str Storage for conversion.
+ */
+static void sl_i64_to_str( int64_t i64, char* str )
+{
+    if ( i64 < 0 ) {
+        *str++ = '-';
+        sl_u64_to_str( -i64, str );
+    } else {
+        sl_u64_to_str( i64, str );
+    }
 }

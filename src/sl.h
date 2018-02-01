@@ -14,16 +14,19 @@
  *
  * SL String looks like a "normal" C string, but it includes a hidden
  * descriptor. Descriptor is before the string content in
- * memory. Descriptor includes reservation size for the string storage,
- * and the effective length of the string. Effective length means string
+ * memory. Descriptor includes storage size for string content, and
+ * the effective length of the string. Effective length means string
  * length without the terminating null. SL Strings are always null
- * terminated.
+ * terminated. The complete SL Allocation is Descriptor plus the
+ * string storage.
  *
  * SL struct:
  *
- *        reservation (uint32_t)
- *        length      (uint32_t)
- *     -> content     (char*)
+ *        Field     Type          Addr
+ *        -----------------------------
+ *        storage   (uint32_t)  | N + 0
+ *        length    (uint32_t)  | N + 4
+ *     -> content   (char*)     | N + 8
  *
  * SL datatype is "sls". It is a typedef of "char*", which means it is
  * usable by the standard library functions.
@@ -49,17 +52,17 @@
  * Typically SL Strings are created with larger storage that what the
  * first content would require. For example we could create SL as:
  *
- *     sl = slsiz_c( "hello", 128 );
+ *     ss = slsiz_c( "hello", 128 );
  *
  * Length would be 5 and allocation size 128. If we want to concatenate "
  * world!" to SL, we don't have to redo any allocations, since we have
  * spare storage. Concatenation would be done as:
  *
- *    slcat_c( &sl, " world!" );
+ *    slcat_c( &ss, " world!" );
  *
  * We could also create SL with minimum size:
  *
- *    sl = slstr_c( "hello" );
+ *    ss = slstr_c( "hello" );
  *
  * Again the length would be 5, but storage would be only 6. If we now
  * concatenate the rest to SL, there will be a reallocation. After
@@ -67,7 +70,7 @@
  *
  * Any heap allocated SL should be de-allocated after use.
  *
- *     sldel( &sl );
+ *     sldel( &ss );
  *
  * De-allocation takes "slp" type argument in order to ensure that SL
  * becomes NULL after memory free.
@@ -76,11 +79,11 @@
  * have some stack storage available.
  *
  *     char buf[ 128 ];
- *     sls sl;
+ *     sls ss;
  *
  * The you can take that into use with:
  *
- *     sl = sluse( buf, 128 );
+ *     ss = sluse( buf, 128 );
  *
  * Note that stack allocated SL can't be enlarged, hence user must take
  * care that this does not happen. Also note that SL does not (in this
@@ -105,14 +108,14 @@ typedef uint32_t sl_size_t;
 /** SL structure. */
 typedef struct
 {
-    sl_size_t res;      /**< Reservation. */
+    sl_size_t res;      /**< String storage size. */
     sl_size_t len;      /**< Length (used). */
     char      str[ 0 ]; /**< String content. */
 } sl_s;
 
 
 /** Pointer to SL. */
-typedef sl_s* sl;
+typedef sl_s* slb;
 
 /** Type for SL String. */
 typedef char* sls;
@@ -158,10 +161,11 @@ extern void* sl_realloc( void* ptr, size_t size );
 
 
 /**
- * Create new storage for SL with given reservation size (i.e. at
- * least len+1).
+ * Create new SL.
  *
- * @param size Reservation size.
+ * Storage size should be at least string length + 1.
+ *
+ * @param size String storage size.
  *
  * @return SL.
  */
@@ -169,7 +173,9 @@ sls slnew( sl_size_t size );
 
 
 /**
- * Use existing SL reservation with total size of "size".
+ * Use existing SL reservation.
+ *
+ * Size is for the whole SL, including descriptor and string storage.
  *
  * @param ss    Allocation for SL.
  * @param size  Allocation size.
@@ -186,29 +192,32 @@ sls sluse( void* ss, sl_size_t size );
  *
  * @return NULL
  */
-sls sldel( slp ss );
+sls sldel( slp sp );
 
 
 /**
- * Create SL reservation for size. If current reservation is bigger,
- * do nothing.
+ * Create SL storage for size.
  *
- * @param ss   SLP.
- * @param size Reservation size.
+ * If current reservation is bigger, do nothing.
+ *
+ * @param sp   SLP.
+ * @param size Storage size.
  *
  * @return SL.
  */
-sls slres( slp ss, sl_size_t size );
+sls slres( slp sp, sl_size_t size );
 
 
 /**
- * Shrink reservation to minimum size.
+ * Shrink storage to minimum size.
  *
- * @param ss SLP.
+ * Minimum is string length + 1.
+ *
+ * @param sp SLP.
  *
  * @return SL.
  */
-sls slmin( slp ss );
+sls slmin( slp sp );
 
 
 /**
@@ -234,19 +243,31 @@ sls slcpy_c( slp s1, char* s2 );
 
 
 /**
- * Fill (append) SL with "c" by "cnt" times.
+ * Fill (append) SL with character by "cnt" times.
  *
- * @param ss  SLP.
+ * @param sp  SLP.
  * @param c   Char for filling.
  * @param cnt Fill count.
  *
  * @return SL.
  */
-sls slfil( slp ss, char c, sl_size_t cnt );
+sls slfil( slp sp, char c, sl_size_t cnt );
 
 
 /**
- * Duplicate SL, using same reservation as original.
+ * Fill (append) SL with string by "cnt" times.
+ *
+ * @param sp  SLP.
+ * @param cs  CSTR for filling.
+ * @param cnt Fill count.
+ *
+ * @return SL.
+ */
+sls slmul( slp sp, char* cs, sl_size_t cnt );
+
+
+/**
+ * Duplicate SL, using same storage as original.
  *
  * @param ss SL.
  *
@@ -256,7 +277,7 @@ sls sldup( sls ss );
 
 
 /**
- * Replicate (duplicate) SL, using mininum reservation.
+ * Replicate (duplicate) SL, using mininum storage.
  *
  * @param ss SL.
  *
@@ -266,8 +287,9 @@ sls slrep( sls ss );
 
 
 /**
- * Clear content of SL, i.e. set length to 0. Reservation is not
- * touched.
+ * Clear content of SL.
+ *
+ * Set string length to 0. No change to storage.
  *
  * @param ss SL.
  *
@@ -292,7 +314,7 @@ sls slstr_c( char* cs );
  * Size is enlarged if CSTR is longer than given size.
  *
  * @param cs    CSTR.
- * @param size  Reservation size.
+ * @param size  Storage size.
  *
  * @return SL.
  */
@@ -310,11 +332,13 @@ sl_size_t sllen( sls ss );
 
 
 /**
- * Return SL allocation (reservation) size.
+ * Return SL storage size.
+ *
+ * Storage size is the string content storage.
  *
  * @param ss SL.
  *
- * @return Reservation.
+ * @return Storage size.
  */
 sl_size_t slall( sls ss );
 
@@ -326,7 +350,7 @@ sl_size_t slall( sls ss );
  *
  * @return Base type.
  */
-sl slsl( sls ss );
+slb slsl( sls ss );
 
 
 /**
@@ -393,18 +417,22 @@ sls slcat_c( slp s1, char* s2 );
 
 
 /**
- * Push (insert) character to pos. Pos can be positive or negative.
+ * Push (insert) character to pos.
  *
- * @param ss  SLP.
+ * Pos can be positive or negative.
+ *
+ * @param sp  SLP.
  * @param pos Pos.
  *
  * @return SL.
  */
-sls slpsh( slp ss, int pos, char c );
+sls slpsh( slp sp, int pos, char c );
 
 
 /**
- * Pop (remove) character at pos. Pos can be positive or negative.
+ * Pop (remove) character at pos.
+ *
+ * Pos can be positive or negative.
  *
  * @param ss  SL.
  * @param pos Pos.
@@ -416,6 +444,8 @@ sls slpop( sls ss, int pos );
 
 /**
  * Cut to pos.
+ *
+ * Tail is removed and string length becomes same as pos.
  *
  * @param ss  SL.
  * @param pos Pos.
@@ -440,9 +470,11 @@ sls slcut( sls ss, int cnt );
 
 
 /**
- * Select a slice from SL and mutate SL. Positive index is from start
- * and negative from end of string. slsel() is not sensitive to the
- * order of boundaries. Ending index is exclusive.
+ * Select a slice from SL and mutate SL.
+ *
+ * Positive index is from start and negative from end of
+ * string. slsel() is not sensitive to the order of boundaries. End
+ * index is exclusive.
  *
  * @param ss   SL.
  * @param a    A boundary.
@@ -480,29 +512,66 @@ sls slins_c( slp s1, int pos, char* s2 );
 /**
  * Formatted (printf style) print to SL.
  *
- * @param ss   SLP.
+ * @param sp   SLP.
  * @param fmt  Format.
  *
  * @return SL.
  */
-sls slfmt( slp ss, char* fmt, ... );
+sls slfmt( slp sp, char* fmt, ... );
 
 
 /**
  * Variable Arguments (VA) version of slfmt().
  *
- * @param ss  SLP.
+ * @param sp  SLP.
  * @param fmt Format.
  * @param ap  VA list.
  *
  * @return SL.
  */
-sls slvpr( slp ss, char* fmt, va_list ap );
+sls slvpr( slp sp, char* fmt, va_list ap );
 
 
 /**
- * Invert position, i.e. from positive index to negative and vice
- * versa. Logical position is not changed.
+ * Quick Formatted print to SL.
+ *
+ * Quick Format is close to printf format, but is significantly
+ * reduced and faster.
+ *
+ *     %s = C string.
+ *     %S = SL string.
+ *     %i = Integer.
+ *     %I = 64-bit integer.
+ *     %u = Unsigned integer.
+ *     %U = Unsigned 64-bit integer.
+ *     %c = Character.
+ *     %% = Literal '%'.
+ *
+ * @param sp   SLP.
+ * @param fmt  Quick Format.
+ *
+ * @return SL.
+ */
+sls slfmq( slp sp, char* fmt, ... );
+
+
+/**
+ * Variable Arguments (VA) version of slfmq().
+ *
+ * @param sp  SLP.
+ * @param fmt Quick Format.
+ * @param ap  VA list.
+ *
+ * @return SL.
+ */
+sls slvpq( slp sp, char* fmt, va_list ap );
+
+
+/**
+ * Invert position index.
+ *
+ * Positive index is converted to negative and vice versa. Logical
+ * position is same for inverted and non-inverted indeces.
  *
  * @param ss  SL.
  * @param pos Pos.
@@ -550,22 +619,24 @@ int slidx( sls s1, char* s2 );
 
 
 /**
- * Divide (split) SL to pieces by character "c". Return the number of
- * pieces after split. Pieces are stored to array pointed by "div". If
- * character "c" hits the last char of SL, the last piece will be of
- * length 0.
+ * Divide (split) SL to pieces by character "c".
+ *
+ * Return the number of pieces after split. Pieces are stored to array
+ * pointed by "div". If character "c" hits the last char of SL, the
+ * last piece will be of length 0.
  *
  * SL will be modified by replacing "c" with 0. This can be cancelled
- * with slswp() or user can use a duplicate in the first place.
+ * with slswp() or user can use a duplicate SL, which does not require
+ * fixing.
  *
  * If called with "size" < 0, return only the number of parts. No
  * modification is done to SL.
  *
- * If called with "*div" != NULL, fill the preallocated div.
+ * If called with "*div" != NULL, fill the pre-allocated "div".
  *
- * Else calculate parts, and then allocate storage for it. Should be
- * freed by the user when done. "size" is then dont-care and will be
- * calculated for the user.
+ * Otherwise construct pieces, and allocate storage for it. Storage
+ * should be freed by the user when done. In this case, "size" is
+ * dont-care and will be calculated for the user.
  *
  * @param ss   SL.
  * @param c    Char to split with.
@@ -580,7 +651,7 @@ int sldiv( sls ss, char c, int size, char*** div );
 /**
  * Same as sldiv() except segmentation (split) is done using CSTR.
  *
- * Both sldiv() and slseg() terminate the segment with single 0.
+ * Both sldiv() and slseg() terminates the segment with single 0.
  *
  * @param ss   SL.
  * @param sc   CSTR to split with.
@@ -605,9 +676,10 @@ sls slglu( sla sa, sl_size_t size, char* glu );
 
 
 /**
- * Split "ss" into tokens delimited by "delim". sltok() is called
- * multiple times for each iteration separately. "pos" holds the state
- * between iterations.
+ * Split "ss" into tokens delimited by "delim".
+ *
+ * sltok() is called multiple times for each iteration
+ * separately. "pos" holds the state between iterations.
  *
  * For first call "ss" should be itself and "*pos" should be NULL. For
  * subsequent calls only "*pos" will be considered.
@@ -664,8 +736,9 @@ sls slbas( sls ss );
 
 
 /**
- * Swap (repair) SL by mapping "f" char to "t" char. Useful to cleanup
- * after sldiv() or slseg().
+ * Swap (repair) SL by mapping "f" char to "t" char.
+ *
+ * Useful to cleanup after sldiv() or slseg().
  *
  * @param ss SL.
  * @param f  From char.
@@ -677,20 +750,21 @@ sls slswp( sls ss, char f, char t );
 
 
 /**
- * Map (replace) string "f" to "t" in "ss". "f" and "t" can be
- * either SL or CSTR.
+ * Map (replace) string "f" to "t" in "ss".
  *
- * @param ss SLP.
+ * "f" and "t" can be either SL or CSTR.
+ *
+ * @param sp SLP.
  * @param f  From string.
  * @param t  To string.
  *
  * @return SL
  */
-sls slmap( slp ss, char* f, char* t );
+sls slmap( slp sp, char* f, char* t );
 
 
 /**
- * Capitalize SL, i.e. upper case first letter.
+ * Capitalize SL, i.e. upcase the first letter.
  *
  * @param ss SL.
  *
@@ -732,8 +806,8 @@ sls slrdf( char* filename );
 /**
  * Write SL content to file.
  *
- * @param ss       SL with content.
- * @param filename File to write.
+ * @param ss       SL including file content.
+ * @param filename File to write to.
  *
  * @return SL.
  */
