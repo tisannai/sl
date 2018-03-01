@@ -288,6 +288,16 @@ sls sldup( sls ss );
 
 
 /**
+ * Duplicate SL as CSTR.
+ *
+ * @param ss SL.
+ *
+ * @return CSTR.
+ */
+char* sldup_c( sls ss );
+
+
+/**
  * Replicate (duplicate) SL, using mininum storage.
  *
  * @param ss SL.

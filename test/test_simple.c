@@ -8,6 +8,7 @@ void test_basics( void )
 {
     sls   s, s2;
     char* t1 = "text1";
+    char* sd;
 
 #ifdef SL_MEM_API
     sl_cfg_alloc( sl_malloc_f, sl_free_f, sl_realloc_f );
@@ -35,6 +36,10 @@ void test_basics( void )
     s2 = sldup( s );
     TEST_ASSERT_TRUE( !slcmp( s, s2 ) );
     sldel( &s2 );
+
+    sd = sldup_c( s );
+    TEST_ASSERT_TRUE( !slcmp( s, sd ) );
+    sl_free( sd );
 
     s2 = slrep( s );
     TEST_ASSERT_TRUE( !sldff( s, s2 ) );

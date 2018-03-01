@@ -176,6 +176,15 @@ sls sldup( sls ss )
 }
 
 
+char* sldup_c( sls ss )
+{
+    ssize_t len1 = sl_len1( ss );
+    char* dup = sl_malloc( len1 );
+    strncpy( dup, ss, len1 );
+    return dup;
+}
+
+
 sls slrep( sls ss )
 {
     sls sn;
