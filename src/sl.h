@@ -27,12 +27,12 @@
  *                    `- length    (uint32_t)  | N + 4
  *         Content ----- string    (char*)     | N + 8
  *
- * Basic SL datatype is "sls". Most SL library functions take it as
- * argument and they also return values in that type. "sls" is a
+ * Basic SL datatype is "sl_t". Most SL library functions take it as
+ * argument and they also return values in that type. "sl_t" is a
  * typedef of "char*", hence it is usable by standard C library
  * functions.
  *
- * SL library functions expect that "sls" typed arguments have the
+ * SL library functions expect that "sl_t" typed arguments have the
  * "hidden" descriptor in place. Using CSTR in place of a SL string
  * will cause memory corruption. CSTR has potentially "garbage" in
  * front of its first character in memory.
@@ -40,11 +40,11 @@
  * Part of the SL library functions mutate the string and some only
  * reference it (read only access). Some of the mutating functions may
  * need to allocate more space in order to fit the growing
- * string. These functions require "slp" type to be used as argument
- * type. "slp" is a pointer to "sls". "slp" is needed since SL String
+ * string. These functions require "sl_p" type to be used as argument
+ * type. "sl_p" is a pointer to "sl_t". "sl_p" is needed since SL String
  * might appear in different memory address after resizing. Even when
- * the argument have to be of "slp" type, the return value is still of
- * "sls" type. This makes use of SL more convenient.
+ * the argument have to be of "sl_p" type, the return value is still of
+ * "sl_t" type. This makes use of SL more convenient.
  *
  * Some SL library functions may use both SL and CSTR type
  * arguments. These functions use "char*" as argument type, since SL
@@ -77,14 +77,14 @@
  *
  *     sldel( &ss );
  *
- * De-allocation takes "slp" type argument in order to ensure that SL
+ * De-allocation takes "sl_p" type argument in order to ensure that SL
  * becomes NULL after memory free.
  *
  * SL can also be used within stack allocated strings. First you have to
  * have some stack storage available.
  *
  *     char buf[ 128 ];
- *     sls  ss;
+ *     sl_t  ss;
  *
  * Then you can take that into use with:
  *
@@ -125,16 +125,22 @@ typedef struct
 
 
 /** Pointer to SL. */
-typedef sl_s* slb;
+typedef sl_s* sl_base_p;
 
 /** Type for SL String. */
-typedef char* sls;
+typedef char* sl_t;
 
 /** Handle for mutable SL. */
-typedef sls* slp;
+typedef sl_t* sl_p;
 
 /** SL array type. */
-typedef sls* sla;
+typedef sl_t* sl_v;
+
+/** Extra SL type alises. */
+typedef sl_base_p slb;
+typedef sl_t sls;
+typedef sl_p slp;
+typedef sl_v sla;
 
 
 #ifdef SL_MEM_API
@@ -164,6 +170,65 @@ extern void* sl_realloc( void* ptr, size_t size );
 #endif
 
 
+#define slnew     sl_new
+#define sluse     sl_use
+#define sldel     sl_del
+#define slres     sl_reserve
+#define slcom     sl_compact
+#define slcpy     sl_copy
+#define slcpy_c   sl_copy_c
+#define slfil     sl_fill_with_char
+#define slmul     sl_multiple_str_append
+#define sldup     sl_duplicate
+#define sldup_c   sl_duplicate_c
+#define slrep     sl_replicate
+#define slclr     sl_clear
+#define slstr_c   sl_from_str_c
+#define slsiz_c   sl_from_str_with_size_c
+#define sllen     sl_length
+#define slrss     sl_reservation_size
+#define slptr     sl_base_ptr
+#define slend     sl_end_char
+#define slcmp     sl_compare
+#define sldff     sl_is_different
+#define slsrt     sl_sort
+#define slcat     sl_concatenate
+#define slcat_c   sl_concatenate_c
+#define slpsh     sl_push_char_to
+#define slpop     sl_pop_char_from
+#define sllim     sl_limit_to_pos
+#define slcut     sl_cut
+#define slsel     sl_select_slice
+#define slins     sl_insert_to
+#define slins_c   sl_insert_to_c
+#define slfmt     sl_format
+#define slvft     sl_va_format
+#define slfmq     sl_format_quick
+#define slvfq     sl_va_format_quick
+#define slinv     sl_invert_pos
+#define slfcr     sl_find_char_right
+#define slfcl     sl_find_char_left
+#define slidx     sl_find_index
+#define sldiv     sl_divide_with_char
+#define slseg     sl_segment_with_str
+#define slglu     sl_glue_array
+#define sltok     sl_tokenize
+#define slext     sl_rm_extension
+#define sldir     sl_directory_name
+#define slbas     sl_basename
+#define slswp     sl_swap_chars
+#define slmap     sl_map_str
+#define slcap     sl_capitalize
+#define sltou     sl_toupper
+#define sltol     sl_tolower
+#define slrdf     sl_read_file
+#define slwrf     sl_write_file
+#define slprn     sl_print
+
+
+
+
+
 
 /* ------------------------------------------------------------
  * Library
@@ -179,7 +244,7 @@ extern void* sl_realloc( void* ptr, size_t size );
  *
  * @return SL.
  */
-sls slnew( sl_size_t size );
+sl_t sl_new( sl_size_t size );
 
 
 /**
@@ -193,7 +258,7 @@ sls slnew( sl_size_t size );
  *
  * @return SL.
  */
-sls sluse( void* mem, sl_size_t size );
+sl_t sl_use( void* mem, sl_size_t size );
 
 
 /**
@@ -203,7 +268,7 @@ sls sluse( void* mem, sl_size_t size );
  *
  * @return NULL
  */
-sls sldel( slp sp );
+sl_t sl_del( sl_p sp );
 
 
 /**
@@ -216,11 +281,11 @@ sls sldel( slp sp );
  *
  * @return SL.
  */
-sls slres( slp sp, sl_size_t size );
+sl_t sl_reserve( sl_p sp, sl_size_t size );
 
 
 /**
- * Shrink storage to minimum size.
+ * Compact storage to minimum size.
  *
  * Minimum is string length + 1.
  *
@@ -228,7 +293,7 @@ sls slres( slp sp, sl_size_t size );
  *
  * @return SL.
  */
-sls slmin( slp sp );
+sl_t sl_compact( sl_p sp );
 
 
 /**
@@ -239,7 +304,7 @@ sls slmin( slp sp );
  *
  * @return SL.
  */
-sls slcpy( slp s1, sls s2 );
+sl_t sl_copy( sl_p s1, sl_t s2 );
 
 
 /**
@@ -250,7 +315,7 @@ sls slcpy( slp s1, sls s2 );
  *
  * @return SL.
  */
-sls slcpy_c( slp s1, char* s2 );
+sl_t sl_copy_c( sl_p s1, char* s2 );
 
 
 /**
@@ -262,7 +327,7 @@ sls slcpy_c( slp s1, char* s2 );
  *
  * @return SL.
  */
-sls slfil( slp sp, char c, sl_size_t cnt );
+sl_t sl_fill_with_char( sl_p sp, char c, sl_size_t cnt );
 
 
 /**
@@ -274,7 +339,7 @@ sls slfil( slp sp, char c, sl_size_t cnt );
  *
  * @return SL.
  */
-sls slmul( slp sp, char* cs, sl_size_t cnt );
+sl_t sl_multiple_str_append( sl_p sp, char* cs, sl_size_t cnt );
 
 
 /**
@@ -284,7 +349,7 @@ sls slmul( slp sp, char* cs, sl_size_t cnt );
  *
  * @return SL.
  */
-sls sldup( sls ss );
+sl_t sl_duplicate( sl_t ss );
 
 
 /**
@@ -294,7 +359,7 @@ sls sldup( sls ss );
  *
  * @return CSTR.
  */
-char* sldup_c( sls ss );
+char* sl_duplicate_c( sl_t ss );
 
 
 /**
@@ -304,7 +369,7 @@ char* sldup_c( sls ss );
  *
  * @return SL.
  */
-sls slrep( sls ss );
+sl_t sl_replicate( sl_t ss );
 
 
 /**
@@ -316,7 +381,7 @@ sls slrep( sls ss );
  *
  * @return SL.
  */
-sls slclr( sls ss );
+sl_t sl_clear( sl_t ss );
 
 
 /**
@@ -326,7 +391,7 @@ sls slclr( sls ss );
  *
  * @return SL.
  */
-sls slstr_c( char* cs );
+sl_t sl_from_str_c( char* cs );
 
 
 /**
@@ -339,7 +404,7 @@ sls slstr_c( char* cs );
  *
  * @return SL.
  */
-sls slsiz_c( char* cs, sl_size_t size );
+sl_t sl_from_str_with_size_c( char* cs, sl_size_t size );
 
 
 /**
@@ -349,7 +414,7 @@ sls slsiz_c( char* cs, sl_size_t size );
  *
  * @return Length.
  */
-sl_size_t sllen( sls ss );
+sl_size_t sl_length( sl_t ss );
 
 
 /**
@@ -361,7 +426,7 @@ sl_size_t sllen( sls ss );
  *
  * @return Storage size.
  */
-sl_size_t slall( sls ss );
+sl_size_t sl_reservation_size( sl_t ss );
 
 
 /**
@@ -371,7 +436,7 @@ sl_size_t slall( sls ss );
  *
  * @return Base type.
  */
-slb slsl( sls ss );
+slb sl_base_ptr( sl_t ss );
 
 
 /**
@@ -379,9 +444,9 @@ slb slsl( sls ss );
  *
  * @param ss SL.
  *
- * @return Last char.
+ * @return Last char (or NULL).
  */
-char slend( sls ss );
+char sl_end_char( sl_t ss );
 
 
 /**
@@ -392,7 +457,7 @@ char slend( sls ss );
  *
  * @return -1,0,1 (see strcmp).
  */
-int slcmp( sls s1, sls s2 );
+int sl_compare( sl_t s1, sl_t s2 );
 
 
 /**
@@ -403,7 +468,7 @@ int slcmp( sls s1, sls s2 );
  *
  * @return 1 if different.
  */
-int sldff( sls s1, sls s2 );
+int sl_is_different( sl_t s1, sl_t s2 );
 
 
 /**
@@ -412,7 +477,7 @@ int sldff( sls s1, sls s2 );
  * @param sa   SL array.
  * @param len  SL array length.
  */
-void slsrt( sla sa, sl_size_t len );
+void sl_sort( sl_v sa, sl_size_t len );
 
 
 /**
@@ -423,7 +488,7 @@ void slsrt( sla sa, sl_size_t len );
  *
  * @return SL.
  */
-sls slcat( slp s1, sls s2 );
+sl_t sl_concatenate( sl_p s1, sl_t s2 );
 
 
 /**
@@ -434,7 +499,7 @@ sls slcat( slp s1, sls s2 );
  *
  * @return SL.
  */
-sls slcat_c( slp s1, char* s2 );
+sl_t sl_concatenate_c( sl_p s1, char* s2 );
 
 
 /**
@@ -447,7 +512,7 @@ sls slcat_c( slp s1, char* s2 );
  *
  * @return SL.
  */
-sls slpsh( slp sp, int pos, char c );
+sl_t sl_push_char_to( sl_p sp, int pos, char c );
 
 
 /**
@@ -460,7 +525,7 @@ sls slpsh( slp sp, int pos, char c );
  *
  * @return SL.
  */
-sls slpop( sls ss, int pos );
+sl_t sl_pop_char_from( sl_t ss, int pos );
 
 
 /**
@@ -473,7 +538,7 @@ sls slpop( sls ss, int pos );
  *
  * @return SL.
  */
-sls sllim( sls ss, int pos );
+sl_t sl_limit_to_pos( sl_t ss, int pos );
 
 
 /**
@@ -487,14 +552,14 @@ sls sllim( sls ss, int pos );
  *
  * @return SL.
  */
-sls slcut( sls ss, int cnt );
+sl_t sl_cut( sl_t ss, int cnt );
 
 
 /**
  * Select a slice from SL and mutate SL.
  *
  * Positive index is from start and negative from end of
- * string. slsel() is not sensitive to the order of boundaries. End
+ * string. sl_tel() is not sensitive to the order of boundaries. End
  * index is exclusive.
  *
  * @param ss   SL.
@@ -503,7 +568,7 @@ sls slcut( sls ss, int cnt );
  *
  * @return SL.
  */
-sls slsel( sls ss, int a, int b );
+sl_t sl_select_slice( sl_t ss, int a, int b );
 
 
 /**
@@ -515,7 +580,7 @@ sls slsel( sls ss, int a, int b );
  *
  * @return Target.
  */
-sls slins( slp s1, int pos, sls s2 );
+sl_t sl_insert_to( sl_p s1, int pos, sl_t s2 );
 
 
 /**
@@ -527,7 +592,7 @@ sls slins( slp s1, int pos, sls s2 );
  *
  * @return Target.
  */
-sls slins_c( slp s1, int pos, char* s2 );
+sl_t sl_insert_to_c( sl_p s1, int pos, char* s2 );
 
 
 /**
@@ -538,7 +603,7 @@ sls slins_c( slp s1, int pos, char* s2 );
  *
  * @return SL.
  */
-sls slfmt( slp sp, char* fmt, ... );
+sl_t sl_format( sl_p sp, char* fmt, ... );
 
 
 /**
@@ -550,7 +615,7 @@ sls slfmt( slp sp, char* fmt, ... );
  *
  * @return SL.
  */
-sls slvpr( slp sp, char* fmt, va_list ap );
+sl_t sl_va_format( sl_p sp, char* fmt, va_list ap );
 
 
 /**
@@ -573,7 +638,7 @@ sls slvpr( slp sp, char* fmt, va_list ap );
  *
  * @return SL.
  */
-sls slfmq( slp sp, char* fmt, ... );
+sl_t sl_format_quick( sl_p sp, char* fmt, ... );
 
 
 /**
@@ -585,7 +650,7 @@ sls slfmq( slp sp, char* fmt, ... );
  *
  * @return SL.
  */
-sls slvpq( slp sp, char* fmt, va_list ap );
+sl_t sl_va_format_quick( sl_p sp, char* fmt, va_list ap );
 
 
 /**
@@ -599,7 +664,7 @@ sls slvpq( slp sp, char* fmt, va_list ap );
  *
  * @return Inverted pos.
  */
-int slinv( sls ss, int pos );
+int sl_invert_pos( sl_t ss, int pos );
 
 
 /**
@@ -611,7 +676,7 @@ int slinv( sls ss, int pos );
  *
  * @return Pos (or -1 if not found).
  */
-int slfcr( sls ss, char c, sl_size_t pos );
+int sl_find_char_right( sl_t ss, char c, sl_size_t pos );
 
 
 /**
@@ -623,7 +688,7 @@ int slfcr( sls ss, char c, sl_size_t pos );
  *
  * @return Pos (or -1 if not found).
  */
-int slfcl( sls ss, char c, sl_size_t pos );
+int sl_find_char_left( sl_t ss, char c, sl_size_t pos );
 
 
 /**
@@ -636,7 +701,7 @@ int slfcl( sls ss, char c, sl_size_t pos );
  *
  * @return Pos (or -1 if not found).
  */
-int slidx( sls s1, char* s2 );
+int sl_find_index( sl_t s1, char* s2 );
 
 
 /**
@@ -647,7 +712,7 @@ int slidx( sls s1, char* s2 );
  * last piece will be of length 0.
  *
  * SL will be modified by replacing "c" with 0. This can be cancelled
- * with slswp() or user can use a duplicate SL, which does not require
+ * with sl_twp() or user can use a duplicate SL, which does not require
  * fixing.
  *
  * If called with "size" < 0, return only the number of parts. No
@@ -666,13 +731,13 @@ int slidx( sls s1, char* s2 );
  *
  * @return Number of pieces.
  */
-int sldiv( sls ss, char c, int size, char*** div );
+int sl_divide_with_char( sl_t ss, char c, int size, char*** div );
 
 
 /**
  * Same as sldiv() except segmentation (split) is done using CSTR.
  *
- * Both sldiv() and slseg() terminates the segment with single 0.
+ * Both sldiv() and sl_teg() terminates the segment with single 0.
  *
  * @param ss   SL.
  * @param sc   CSTR to split with.
@@ -681,7 +746,7 @@ int sldiv( sls ss, char c, int size, char*** div );
  *
  * @return Number of pieces.
  */
-int slseg( sls ss, char* sc, int size, char*** div );
+int sl_segment_with_str( sl_t ss, char* sc, int size, char*** div );
 
 
 /**
@@ -693,7 +758,7 @@ int slseg( sls ss, char* sc, int size, char*** div );
  *
  * @return SL.
  */
-sls slglu( sla sa, sl_size_t size, char* glu );
+sl_t sl_glue_array( sl_v sa, sl_size_t size, char* glu );
 
 
 /**
@@ -709,7 +774,7 @@ sls slglu( sla sa, sl_size_t size, char* glu );
  *
  * Example:
  *   char* t, *pos, *delim = "XY";
- *   s = slstr_c( "abXYabcXYc" );
+ *   s = sl_ttr_c( "abXYabcXYc" );
  *   pos = NULL;
  *   t = sltok( s, delim, &pos );
  *   t = sltok( s, delim, &pos );
@@ -721,7 +786,7 @@ sls slglu( sla sa, sl_size_t size, char* glu );
  *
  * @return Start of current token (or NULL if no token).
  */
-char* sltok( sls ss, char* delim, char** pos );
+char* sl_tokenize( sl_t ss, char* delim, char** pos );
 
 
 /**
@@ -729,10 +794,9 @@ char* sltok( sls ss, char* delim, char** pos );
  *
  * @param ss  SL.
  * @param ext Extension (i.e. file suffix).
- *
  * @return Updated SL (or NULL if no ext found).
  */
-sls slext( sls ss, char* ext );
+sl_t sl_rm_extension( sl_t ss, char* ext );
 
 
 /**
@@ -742,7 +806,7 @@ sls slext( sls ss, char* ext );
  *
  * @return SL.
  */
-sls sldir( sls ss );
+sl_t sl_directory_name( sl_t ss );
 
 
 /**
@@ -753,13 +817,13 @@ sls sldir( sls ss );
  *
  * @return SL.
  */
-sls slbas( sls ss );
+sl_t sl_basename( sl_t ss );
 
 
 /**
  * Swap (repair) SL by mapping "f" char to "t" char.
  *
- * Useful to cleanup after sldiv() or slseg().
+ * Useful to cleanup after sldiv() or sl_teg().
  *
  * @param ss SL.
  * @param f  From char.
@@ -767,7 +831,7 @@ sls slbas( sls ss );
  *
  * @return SL.
  */
-sls slswp( sls ss, char f, char t );
+sl_t sl_swap_chars( sl_t ss, char f, char t );
 
 
 /**
@@ -781,7 +845,7 @@ sls slswp( sls ss, char f, char t );
  *
  * @return SL
  */
-sls slmap( slp sp, char* f, char* t );
+sl_t sl_map_str( sl_p sp, char* f, char* t );
 
 
 /**
@@ -791,7 +855,7 @@ sls slmap( slp sp, char* f, char* t );
  *
  * @return SL.
  */
-sls slcap( sls ss );
+sl_t sl_capitalize( sl_t ss );
 
 
 /**
@@ -801,7 +865,7 @@ sls slcap( sls ss );
  *
  * @return SL.
  */
-sls sltou( sls ss );
+sl_t sl_toupper( sl_t ss );
 
 
 /**
@@ -811,7 +875,7 @@ sls sltou( sls ss );
  *
  * @return SL.
  */
-sls sltol( sls ss );
+sl_t sl_tolower( sl_t ss );
 
 
 /**
@@ -821,7 +885,7 @@ sls sltol( sls ss );
  *
  * @return SL.
  */
-sls slrdf( char* filename );
+sl_t sl_read_file( char* filename );
 
 
 /**
@@ -832,7 +896,7 @@ sls slrdf( char* filename );
  *
  * @return SL.
  */
-sls slwrf( sls ss, char* filename );
+sl_t sl_write_file( sl_t ss, char* filename );
 
 
 /**
@@ -840,7 +904,7 @@ sls slwrf( sls ss, char* filename );
  *
  * @param ss SL.
  */
-void slprn( sls ss );
+void sl_print( sl_t ss );
 
 
 #endif

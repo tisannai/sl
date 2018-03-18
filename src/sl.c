@@ -28,10 +28,10 @@
 #define sl_malsize(s)  (sizeof(sl_s) + s)
 
 #define sl_str(s)      ((char*)&(s->str[0]))
-#define sl_base(s)     ((slb)((s)-(sizeof(sl_s))))
-#define sl_len(s)      (((slb)((s)-(sizeof(sl_s))))->len)
-#define sl_len1(s)     ((((slb)((s)-(sizeof(sl_s))))->len)+1)
-#define sl_res(s)      (((slb)((s)-(sizeof(sl_s))))->res)
+#define sl_base(s)     ((sl_base_p)((s)-(sizeof(sl_s))))
+#define sl_len(s)      (((sl_base_p)((s)-(sizeof(sl_s))))->len)
+#define sl_len1(s)     ((((sl_base_p)((s)-(sizeof(sl_s))))->len)+1)
+#define sl_res(s)      (((sl_base_p)((s)-(sizeof(sl_s))))->res)
 #define sl_end(s)      ((char*)((s)+sl_len(s)))
 
 #define sc_len(s)      strlen(s)
@@ -44,17 +44,16 @@
  * Utility functions.
  * ------------------------------------------------------------ */
 
-static void sl_ensure( slp sp, sl_size_t size );
-static void sl_prn( sls ss );
-static char* sl_cpy( char* dst, char* src );
-static off_t sl_fsize( const char* filename );
-static sl_size_t sl_norm_idx( sls ss, int idx );
-static sls slcpy_base( slp s1, char* s2, sl_size_t len1 );
-static int sl_cmp( const void* s1, const void* s2 );
-static sls slcat_base( slp s1, char* s2, sl_size_t len1 );
-static sls slins_base( slp s1, int pos, char* s2, sl_size_t len1 );
-static int sldiv_base( sls ss, char c, int size, char** div );
-static int slseg_base( sls ss, char* sc, int size, char** div );
+static char* sl_copy_setup( char* dst, char* src );
+static off_t sl_file_size( const char* filename );
+static sl_size_t sl_norm_idx( sl_t ss, int idx );
+static sl_t sl_copy_base( sl_p s1, char* s2, sl_size_t len1 );
+static int sl_compare_base( const void* s1, const void* s2 );
+static sl_t sl_concatenate_base( sl_p s1, char* s2, sl_size_t len1 );
+static sl_t sl_insert_base( sl_p s1, int pos, char* s2, sl_size_t len1 );
+static int sl_divide_base( sl_t ss, char c, int size, char** div );
+static int sl_segment_base( sl_t ss, char* sc, int size, char** div );
+
 static sl_size_t sl_u64_str_len( uint64_t u64 );
 static void sl_u64_to_str( uint64_t u64, char* str );
 static sl_size_t sl_i64_str_len( int64_t i64 );
@@ -66,10 +65,10 @@ static void sl_i64_to_str( int64_t i64, char* str );
  * Library
  * ------------------------------------------------------------ */
 
-sls slnew( sl_size_t size )
+sl_t sl_new( sl_size_t size )
 {
-    slb s;
-    s = (slb)sl_malloc( sl_malsize( size ) );
+    sl_base_p s;
+    s = (sl_base_p)sl_malloc( sl_malsize( size ) );
     s->res = size;
     s->len = 0;
     s->str[ 0 ] = 0;
@@ -77,9 +76,9 @@ sls slnew( sl_size_t size )
 }
 
 
-sls sluse( void* mem, sl_size_t size )
+sl_t sl_use( void* mem, sl_size_t size )
 {
-    slb s = mem;
+    sl_base_p s = mem;
     s->res = size - sizeof( sl_s );
     s->len = 0;
     s->str[ 0 ] = 0;
@@ -87,7 +86,7 @@ sls sluse( void* mem, sl_size_t size )
 }
 
 
-sls sldel( slp sp )
+sl_t sl_del( sl_p sp )
 {
     sl_free( sl_base( *sp ) );
     *sp = 0;
@@ -95,12 +94,12 @@ sls sldel( slp sp )
 }
 
 
-sls slres( slp sp, sl_size_t size )
+sl_t sl_reserve( sl_p sp, sl_size_t size )
 {
     if ( sl_res( *sp ) < size ) {
-        slb s;
+        sl_base_p s;
         s = sl_base( *sp );
-        s = (slb)sl_realloc( s, sl_malsize( size ) );
+        s = (sl_base_p)sl_realloc( s, sl_malsize( size ) );
         s->res = size;
         *sp = sl_str( s );
     }
@@ -109,14 +108,14 @@ sls slres( slp sp, sl_size_t size )
 }
 
 
-sls slmin( slp sp )
+sl_t sl_compact( sl_p sp )
 {
     sl_size_t len = sl_len1( *sp );
 
     if ( sl_res( *sp ) > len ) {
-        slb s;
+        sl_base_p s;
         s = sl_base( *sp );
-        s = (slb)sl_realloc( s, sl_malsize( len ) );
+        s = (sl_base_p)sl_realloc( s, sl_malsize( len ) );
         s->res = len;
         *sp = sl_str( s );
     }
@@ -125,22 +124,22 @@ sls slmin( slp sp )
 }
 
 
-sls slcpy( slp s1, sls s2 )
+sl_t sl_copy( sl_p s1, sl_t s2 )
 {
-    return slcpy_base( s1, s2, sl_len1( s2 ) );
+    return sl_copy_base( s1, s2, sl_len1( s2 ) );
 }
 
 
-sls slcpy_c( slp s1, char* s2 )
+sl_t sl_copy_c( sl_p s1, char* s2 )
 {
-    return slcpy_base( s1, s2, sc_len1( s2 ) );
+    return sl_copy_base( s1, s2, sc_len1( s2 ) );
 }
 
 
-sls slfil( slp sp, char c, sl_size_t cnt )
+sl_t sl_fill_with_char( sl_p sp, char c, sl_size_t cnt )
 {
     ssize_t len = sl_len( *sp );
-    sl_ensure( sp, len + cnt + 1 );
+    sl_reserve( sp, len + cnt + 1 );
     char* p = &( ( *sp )[ len ] );
     for ( sl_size_t i = 0; i < cnt; i++, p++ )
         *p = c;
@@ -150,12 +149,12 @@ sls slfil( slp sp, char c, sl_size_t cnt )
 }
 
 
-sls slmul( slp sp, char* cs, sl_size_t cnt )
+sl_t sl_multiple_str_append( sl_p sp, char* cs, sl_size_t cnt )
 {
     ssize_t len = sl_len( *sp );
     ssize_t clen = sc_len( cs );
 
-    sl_ensure( sp, len + cnt * clen + 1 );
+    sl_reserve( sp, len + cnt * clen + 1 );
     char* p = &( ( *sp )[ len ] );
     for ( sl_size_t i = 0; i < cnt; i++ ) {
         strncpy( p, cs, clen );
@@ -167,16 +166,16 @@ sls slmul( slp sp, char* cs, sl_size_t cnt )
 }
 
 
-sls sldup( sls ss )
+sl_t sl_duplicate( sl_t ss )
 {
-    sls sn;
-    sn = slnew( sl_res( ss ) );
-    slcpy( &sn, ss );
+    sl_t sn;
+    sn = sl_new( sl_res( ss ) );
+    sl_copy( &sn, ss );
     return sn;
 }
 
 
-char* sldup_c( sls ss )
+char* sl_duplicate_c( sl_t ss )
 {
     ssize_t len1 = sl_len1( ss );
     char* dup = sl_malloc( len1 );
@@ -185,16 +184,16 @@ char* sldup_c( sls ss )
 }
 
 
-sls slrep( sls ss )
+sl_t sl_replicate( sl_t ss )
 {
-    sls sn;
-    sn = slnew( sl_len( ss ) + 1 );
-    slcpy( &sn, ss );
+    sl_t sn;
+    sn = sl_new( sl_len( ss ) + 1 );
+    sl_copy( &sn, ss );
     return sn;
 }
 
 
-sls slclr( sls ss )
+sl_t sl_clear( sl_t ss )
 {
     sl_len( ss ) = 0;
     *ss = 0;
@@ -202,48 +201,48 @@ sls slclr( sls ss )
 }
 
 
-sls slstr_c( char* cs )
+sl_t sl_from_str_c( char* cs )
 {
     sl_size_t len = sc_len1( cs );
-    sls       ss = slnew( len );
+    sl_t       ss = sl_new( len );
     strncpy( ss, cs, len );
     sl_len( ss ) = len - 1;
     return ss;
 }
 
 
-sls slsiz_c( char* cs, sl_size_t size )
+sl_t sl_from_str_with_size_c( char* cs, sl_size_t size )
 {
     sl_size_t len = sc_len1( cs );
-    sls       ss;
+    sl_t       ss;
     if ( size > len )
-        ss = slnew( size );
+        ss = sl_new( size );
     else
-        ss = slnew( len );
-    slcpy_c( &ss, cs );
+        ss = sl_new( len );
+    sl_copy_c( &ss, cs );
     return ss;
 }
 
 
-sl_size_t sllen( sls ss )
+sl_size_t sl_length( sl_t ss )
 {
     return sl_len( ss );
 }
 
 
-sl_size_t slall( sls ss )
+sl_size_t sl_reservation_size( sl_t ss )
 {
     return sl_res( ss );
 }
 
 
-slb slsl( sls ss )
+sl_base_p sl_base_ptr( sl_t ss )
 {
     return sl_base( ss );
 }
 
 
-char slend( sls ss )
+char sl_end_char( sl_t ss )
 {
     if ( sl_len( ss ) == 0 )
         return 0;
@@ -252,13 +251,13 @@ char slend( sls ss )
 }
 
 
-int slcmp( sls s1, sls s2 )
+int sl_compare( sl_t s1, sl_t s2 )
 {
     return strcmp( s1, s2 );
 }
 
 
-int sldff( sls s1, sls s2 )
+int sl_is_different( sl_t s1, sl_t s2 )
 {
     if ( sl_len( s1 ) != sl_len( s2 ) )
         return 1;
@@ -269,29 +268,29 @@ int sldff( sls s1, sls s2 )
 }
 
 
-void slsrt( sla sa, sl_size_t len )
+void sl_sort( sl_v sa, sl_size_t len )
 {
-    qsort( sa, len, sizeof( char* ), sl_cmp );
+    qsort( sa, len, sizeof( char* ), sl_compare_base );
 }
 
 
-sls slcat( slp s1, sls s2 )
+sl_t sl_concatenate( sl_p s1, sl_t s2 )
 {
-    return slcat_base( s1, s2, sl_len1( s2 ) );
+    return sl_concatenate_base( s1, s2, sl_len1( s2 ) );
 }
 
 
-sls slcat_c( slp s1, char* s2 )
+sl_t sl_concatenate_c( sl_p s1, char* s2 )
 {
-    return slcat_base( s1, s2, sc_len1( s2 ) );
+    return sl_concatenate_base( s1, s2, sc_len1( s2 ) );
 }
 
 
-sls slpsh( slp sp, int pos, char c )
+sl_t sl_push_char_to( sl_p sp, int pos, char c )
 {
     pos = sl_norm_idx( *sp, pos );
-    slb s = sl_base( *sp );
-    sl_ensure( sp, sl_len( *sp ) + 1 );
+    sl_base_p s = sl_base( *sp );
+    sl_reserve( sp, sl_len( *sp ) + 1 );
     if ( (sl_size_t)pos != s->len )
         memmove( &s->str[ pos + 1 ], &s->str[ pos ], s->len - pos );
     s->str[ pos ] = c;
@@ -301,10 +300,10 @@ sls slpsh( slp sp, int pos, char c )
 }
 
 
-sls slpop( sls ss, int pos )
+sl_t sl_pop_char_from( sl_t ss, int pos )
 {
     pos = sl_norm_idx( ss, pos );
-    slb s = sl_base( ss );
+    sl_base_p s = sl_base( ss );
     if ( (sl_size_t)pos != s->len ) {
         memmove( &s->str[ pos ], &s->str[ pos + 1 ], s->len - pos );
         s->len--;
@@ -313,19 +312,19 @@ sls slpop( sls ss, int pos )
 }
 
 
-sls sllim( sls ss, int pos )
+sl_t sl_limit_to_pos( sl_t ss, int pos )
 {
-    slb s = sl_base( ss );
+    sl_base_p s = sl_base( ss );
     s->str[ pos ] = 0;
     s->len = pos;
     return ss;
 }
 
 
-sls slcut( sls ss, int cnt )
+sl_t sl_cut( sl_t ss, int cnt )
 {
     int pos;
-    slb s = sl_base( ss );
+    sl_base_p s = sl_base( ss );
     if ( cnt >= 0 ) {
         pos = s->len - cnt;
         s->str[ pos ] = 0;
@@ -342,7 +341,7 @@ sls slcut( sls ss, int cnt )
 }
 
 
-sls slsel( sls ss, int a, int b )
+sl_t sl_select_slice( sl_t ss, int a, int b )
 {
     sl_size_t an, bn;
 
@@ -360,7 +359,7 @@ sls slsel( sls ss, int a, int b )
         bn = t;
     }
 
-    slb s = sl_base( ss );
+    sl_base_p s = sl_base( ss );
     memmove( s->str, &s->str[ an ], bn - an );
     s->str[ bn - an ] = 0;
     s->len = bn - an;
@@ -369,32 +368,32 @@ sls slsel( sls ss, int a, int b )
 }
 
 
-sls slins( slp s1, int pos, sls s2 )
+sl_t sl_insert_to( sl_p s1, int pos, sl_t s2 )
 {
-    return slins_base( s1, pos, s2, sl_len1( s2 ) );
+    return sl_insert_base( s1, pos, s2, sl_len1( s2 ) );
 }
 
 
-sls slins_c( slp s1, int pos, char* s2 )
+sl_t sl_insert_to_c( sl_p s1, int pos, char* s2 )
 {
-    return slins_base( s1, pos, s2, sc_len1( s2 ) );
+    return sl_insert_base( s1, pos, s2, sc_len1( s2 ) );
 }
 
 
-sls slfmt( slp sp, char* fmt, ... )
+sl_t sl_format( sl_p sp, char* fmt, ... )
 {
-    sls     ret;
+    sl_t     ret;
     va_list ap;
 
     va_start( ap, fmt );
-    ret = slvpr( sp, fmt, ap );
+    ret = sl_va_format( sp, fmt, ap );
     va_end( ap );
 
     return ret;
 }
 
 
-sls slvpr( slp sp, char* fmt, va_list ap )
+sl_t sl_va_format( sl_p sp, char* fmt, va_list ap )
 {
     va_list coap;
 
@@ -408,7 +407,7 @@ sls slvpr( slp sp, char* fmt, va_list ap )
         return NULL; // GCOV_EXCL_LINE
 
     size++;
-    sl_ensure( sp, sl_len( *sp ) + size );
+    sl_reserve( sp, sl_len( *sp ) + size );
 
     size = vsnprintf( sl_end( *sp ), size, fmt, coap );
     va_end( coap );
@@ -419,20 +418,20 @@ sls slvpr( slp sp, char* fmt, va_list ap )
 }
 
 
-sls slfmq( slp sp, char* fmt, ... )
+sl_t sl_format_quick( sl_p sp, char* fmt, ... )
 {
-    sls     ret;
+    sl_t     ret;
     va_list ap;
 
     va_start( ap, fmt );
-    ret = slvpq( sp, fmt, ap );
+    ret = sl_va_format_quick( sp, fmt, ap );
     va_end( ap );
 
     return ret;
 }
 
 
-sls slvpq( slp sp, char* fmt, va_list ap )
+sl_t sl_va_format_quick( sl_p sp, char* fmt, va_list ap )
 {
     va_list coap;
 
@@ -528,7 +527,7 @@ sls slvpq( slp sp, char* fmt, va_list ap )
 
     va_end( ap );
 
-    sl_ensure( sp, sl_len1( *sp ) + size );
+    sl_reserve( sp, sl_len1( *sp ) + size );
 
 
     /* ------------------------------------------------------------
@@ -621,7 +620,7 @@ sls slvpq( slp sp, char* fmt, va_list ap )
 }
 
 
-int slinv( sls ss, int pos )
+int sl_invert_pos( sl_t ss, int pos )
 {
     if ( pos > 0 )
         return -1 * ( sl_len( ss ) - pos );
@@ -630,7 +629,7 @@ int slinv( sls ss, int pos )
 }
 
 
-int slfcr( sls ss, char c, sl_size_t pos )
+int sl_find_char_right( sl_t ss, char c, sl_size_t pos )
 {
     while ( pos < sl_len( ss ) && ss[ pos ] != c )
         pos++;
@@ -642,7 +641,7 @@ int slfcr( sls ss, char c, sl_size_t pos )
 }
 
 
-int slfcl( sls ss, char c, sl_size_t pos )
+int sl_find_char_left( sl_t ss, char c, sl_size_t pos )
 {
     while ( pos > 0 && ss[ pos ] != c )
         pos--;
@@ -654,7 +653,7 @@ int slfcl( sls ss, char c, sl_size_t pos )
 }
 
 
-int slidx( sls s1, char* s2 )
+int sl_find_index( sl_t s1, char* s2 )
 {
     if ( s2[ 0 ] == 0 )
         return -1;
@@ -680,41 +679,41 @@ int slidx( sls s1, char* s2 )
 }
 
 
-int sldiv( sls ss, char c, int size, char*** div )
+int sl_divide_with_char( sl_t ss, char c, int size, char*** div )
 {
     if ( size < 0 ) {
         /* Just count size, don't replace chars. */
-        return sldiv_base( ss, c, -1, NULL );
+        return sl_divide_base( ss, c, -1, NULL );
     } else if ( *div ) {
         /* Use pre-allocated storage. */
-        return sldiv_base( ss, c, size, *div );
+        return sl_divide_base( ss, c, size, *div );
     } else {
         /* Calculate size and allocate storage. */
-        size = sldiv_base( ss, c, -1, NULL );
+        size = sl_divide_base( ss, c, -1, NULL );
         *div = (char**)sl_malloc( size * sizeof( char* ) );
-        return sldiv_base( ss, c, size, *div );
+        return sl_divide_base( ss, c, size, *div );
     }
 }
 
 
-int slseg( sls ss, char* sc, int size, char*** div )
+int sl_segment_with_str( sl_t ss, char* sc, int size, char*** div )
 {
     if ( size < 0 ) {
         /* Just count size, don't replace chars. */
-        return slseg_base( ss, sc, -1, NULL );
+        return sl_segment_base( ss, sc, -1, NULL );
     } else if ( *div ) {
         /* Use pre-allocated storage. */
-        return slseg_base( ss, sc, size, *div );
+        return sl_segment_base( ss, sc, size, *div );
     } else {
         /* Calculate size and allocate storage. */
-        size = slseg_base( ss, sc, -1, NULL );
+        size = sl_segment_base( ss, sc, -1, NULL );
         *div = (char**)sl_malloc( size * sizeof( char* ) );
-        return slseg_base( ss, sc, size, *div );
+        return sl_segment_base( ss, sc, size, *div );
     }
 }
 
 
-sls slglu( sla sa, sl_size_t size, char* glu )
+sl_t sl_glue_array( sl_v sa, sl_size_t size, char* glu )
 {
     int       len = 0;
     sl_size_t i;
@@ -727,17 +726,17 @@ sls slglu( sla sa, sl_size_t size, char* glu )
     /* Add glu len. */
     len += ( size - 1 ) * strlen( glu );
 
-    sls ss;
-    ss = slnew( len + 1 );
+    sl_t ss;
+    ss = sl_new( len + 1 );
     sl_len( ss ) = len;
 
     /* Build result. */
     char* p = ss;
     i = 0;
     while ( i < size ) {
-        p = sl_cpy( p, sa[ i ] );
+        p = sl_copy_setup( p, sa[ i ] );
         if ( i < ( size - 1 ) )
-            p = sl_cpy( p, glu );
+            p = sl_copy_setup( p, glu );
         i++;
     }
     ss[ sl_len( ss ) ] = 0;
@@ -746,12 +745,12 @@ sls slglu( sla sa, sl_size_t size, char* glu )
 }
 
 
-char* sltok( sls ss, char* delim, char** pos )
+char* sl_tokenize( sl_t ss, char* delim, char** pos )
 {
     if ( *pos == 0 ) {
         /* First iteration. */
         int idx;
-        idx = slidx( ss, delim );
+        idx = sl_find_index( ss, delim );
         if ( idx < 0 )
             return NULL;
         else {
@@ -776,7 +775,7 @@ char* sltok( sls ss, char* delim, char** pos )
 
         /* Find next delim. */
         int idx;
-        idx = slidx( p, delim );
+        idx = sl_find_index( p, delim );
         if ( idx < 0 ) {
             /* Last token, mark this by: */
             *pos = sl_end( ss );
@@ -790,13 +789,13 @@ char* sltok( sls ss, char* delim, char** pos )
 }
 
 
-sls slext( sls ss, char* ext )
+sl_t sl_rm_extension( sl_t ss, char* ext )
 {
     char* pos;
     char* t;
 
     pos = NULL;
-    t = sltok( ss, ext, &pos );
+    t = sl_tokenize( ss, ext, &pos );
     if ( t ) {
         sl_len( ss ) = pos - ss;
         return ss;
@@ -805,7 +804,7 @@ sls slext( sls ss, char* ext )
 }
 
 
-sls sldir( sls ss )
+sl_t sl_directory_name( sl_t ss )
 {
     int i;
 
@@ -833,7 +832,7 @@ sls sldir( sls ss )
 }
 
 
-sls slbas( sls ss )
+sl_t sl_basename( sl_t ss )
 {
     int i;
 
@@ -855,7 +854,7 @@ sls slbas( sls ss )
 }
 
 
-sls slswp( sls ss, char f, char t )
+sl_t sl_swap_chars( sl_t ss, char f, char t )
 {
     sl_size_t i;
 
@@ -870,7 +869,7 @@ sls slswp( sls ss, char f, char t )
 }
 
 
-sls slmap( slp sp, char* f, char* t )
+sl_t sl_map_str( sl_p sp, char* f, char* t )
 {
     /*
      * If "t" is longer than "f", loop and count how many instances of
@@ -908,7 +907,7 @@ sls slmap( slp sp, char* f, char* t )
         a = *sp;
 
         while ( 1 ) {
-            idx = slidx( a, f );
+            idx = sl_find_index( a, f );
             if ( idx >= 0 ) {
                 cnt++;
                 a += ( idx + f_len );
@@ -920,7 +919,7 @@ sls slmap( slp sp, char* f, char* t )
         sl_size_t nlen;
         sl_size_t olen = sl_len( *sp );
         nlen = sl_len( *sp ) - ( cnt * f_len ) + ( cnt * t_len );
-        sl_ensure( sp, nlen + 1 );
+        sl_reserve( sp, nlen + 1 );
         sl_len( *sp ) = nlen;
 
         /*
@@ -942,14 +941,14 @@ sls slmap( slp sp, char* f, char* t )
     }
 
     while ( *b ) {
-        idx = slidx( b, f );
+        idx = sl_find_index( b, f );
         if ( idx >= 0 ) {
             strncpy( a, b, idx );
             a += idx;
-            a = sl_cpy( a, t );
+            a = sl_copy_setup( a, t );
             b += ( idx + f_len );
         } else {
-            a = sl_cpy( a, b );
+            a = sl_copy_setup( a, b );
             *a = 0;
             break;
         }
@@ -962,7 +961,7 @@ sls slmap( slp sp, char* f, char* t )
 }
 
 
-sls slcap( sls ss )
+sl_t sl_capitalize( sl_t ss )
 {
     if ( sl_len( ss ) > 0 )
         ss[ 0 ] = toupper( ss[ 0 ] );
@@ -971,7 +970,7 @@ sls slcap( sls ss )
 }
 
 
-sls sltou( sls ss )
+sl_t sl_toupper( sl_t ss )
 {
     for ( sl_size_t i = 0; i < sl_len( ss ); i++ ) {
         ss[ i ] = toupper( ss[ i ] );
@@ -980,7 +979,7 @@ sls sltou( sls ss )
 }
 
 
-sls sltol( sls ss )
+sl_t sl_tolower( sl_t ss )
 {
     for ( sl_size_t i = 0; i < sl_len( ss ); i++ ) {
         ss[ i ] = tolower( ss[ i ] );
@@ -989,15 +988,15 @@ sls sltol( sls ss )
 }
 
 
-sls slrdf( char* filename )
+sl_t sl_read_file( char* filename )
 {
-    sls ss;
+    sl_t ss;
 
-    off_t size = sl_fsize( filename );
+    off_t size = sl_file_size( filename );
     if ( size < 0 )
         return NULL; // GCOV_EXCL_LINE
 
-    ss = slnew( size + 1 );
+    ss = sl_new( size + 1 );
 
     int fd;
 
@@ -1013,7 +1012,7 @@ sls slrdf( char* filename )
 }
 
 
-sls slwrf( sls ss, char* filename )
+sl_t sl_write_file( sl_t ss, char* filename )
 {
     int fd;
 
@@ -1027,9 +1026,11 @@ sls slwrf( sls ss, char* filename )
 }
 
 
-void slprn( sls ss )
+void sl_print( sl_t ss )
 {
-    sl_prn( ss );
+    printf( "%s\n", ss );
+    printf( "  len: %d\n", sl_len( ss ) );
+    printf( "  res: %d\n", sl_res( ss ) );
 }
 
 
@@ -1041,31 +1042,6 @@ void slprn( sls ss )
 
 
 /**
- * Ensure that SL has reservation of at least size.
- *
- * @param ss   SL.
- * @param size Reservation size requirement.
- */
-static void sl_ensure( slp sp, sl_size_t size )
-{
-    slres( sp, size );
-}
-
-
-/**
- * Display SL.
- *
- * @param ss SL.
- */
-static void sl_prn( sls ss )
-{
-    printf( "%s\n", ss );
-    printf( "  len: %d\n", sl_len( ss ) );
-    printf( "  res: %d\n", sl_res( ss ) );
-}
-
-
-/**
  * Copy "src" to "dst" and return pointer to end of "dst".
  *
  * @param dst Destination str.
@@ -1073,7 +1049,7 @@ static void sl_prn( sls ss )
  *
  * @return Pointer to dst end.
  */
-static char* sl_cpy( char* dst, char* src )
+static char* sl_copy_setup( char* dst, char* src )
 {
     int i = 0;
     while ( src[ i ] ) {
@@ -1091,7 +1067,7 @@ static char* sl_cpy( char* dst, char* src )
  *
  * @return File size.
  */
-static off_t sl_fsize( const char* filename )
+static off_t sl_file_size( const char* filename )
 {
     struct stat st;
 
@@ -1119,7 +1095,7 @@ static off_t sl_fsize( const char* filename )
  *
  * @return Unsigned (positive) index to SL.
  */
-static sl_size_t sl_norm_idx( sls ss, int idx )
+static sl_size_t sl_norm_idx( sl_t ss, int idx )
 {
     sl_size_t ret;
 
@@ -1144,9 +1120,9 @@ static sl_size_t sl_norm_idx( sls ss, int idx )
  *
  * @return SL.
  */
-static sls slcpy_base( slp s1, char* s2, sl_size_t len1 )
+static sl_t sl_copy_base( sl_p s1, char* s2, sl_size_t len1 )
 {
-    sl_ensure( s1, len1 );
+    sl_reserve( s1, len1 );
     strncpy( *s1, s2, len1 );
     sl_len( *s1 ) = len1 - 1;
     return *s1;
@@ -1161,7 +1137,7 @@ static sls slcpy_base( slp s1, char* s2, sl_size_t len1 )
  *
  * @return Return "strcmp" result.
  */
-static int sl_cmp( const void* s1, const void* s2 )
+static int sl_compare_base( const void* s1, const void* s2 )
 {
     return strcmp( *(char* const*)s1, *(char* const*)s2 );
 }
@@ -1176,9 +1152,9 @@ static int sl_cmp( const void* s1, const void* s2 )
  *
  * @return SL.
  */
-static sls slcat_base( slp s1, char* s2, sl_size_t len1 )
+static sl_t sl_concatenate_base( sl_p s1, char* s2, sl_size_t len1 )
 {
-    sl_ensure( s1, sl_len( *s1 ) + len1 );
+    sl_reserve( s1, sl_len( *s1 ) + len1 );
     strncpy( sl_end( *s1 ), s2, len1 );
     sl_len( *s1 ) += len1 - 1;
     return *s1;
@@ -1195,10 +1171,10 @@ static sls slcat_base( slp s1, char* s2, sl_size_t len1 )
  *
  * @return SL.
  */
-static sls slins_base( slp s1, int pos, char* s2, sl_size_t len1 )
+static sl_t sl_insert_base( sl_p s1, int pos, char* s2, sl_size_t len1 )
 {
     sl_size_t len = sl_len( *s1 ) + len1;
-    sl_ensure( s1, len );
+    sl_reserve( s1, len );
 
     len1--;
 
@@ -1217,7 +1193,7 @@ static sls slins_base( slp s1, int pos, char* s2, sl_size_t len1 )
     sl_len( *s1 ) += len1;
 
     /* Terminate change SL. */
-    slb s = sl_base( *s1 );
+    sl_base_p s = sl_base( *s1 );
     s->str[ s->len ] = 0;
 
 
@@ -1238,7 +1214,7 @@ static sls slins_base( slp s1, int pos, char* s2, sl_size_t len1 )
  *
  * @return Number of segments.
  */
-static int sldiv_base( sls ss, char c, int size, char** div )
+static int sl_divide_base( sl_t ss, char c, int size, char** div )
 {
     int   divcnt = 0;
     char *a, *b;
@@ -1280,7 +1256,7 @@ static int sldiv_base( sls ss, char c, int size, char** div )
  *
  * @return Number of segments.
  */
-static int slseg_base( sls ss, char* sc, int size, char** div )
+static int sl_segment_base( sl_t ss, char* sc, int size, char** div )
 {
     int   divcnt = 0;
     int   idx;
@@ -1291,7 +1267,7 @@ static int slseg_base( sls ss, char* sc, int size, char** div )
     b = ss;
 
     while ( *a ) {
-        idx = slidx( a, sc );
+        idx = sl_find_index( a, sc );
         if ( idx >= 0 ) {
             b = a + idx;
             if ( size >= 0 )
